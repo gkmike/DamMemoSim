@@ -1,10 +1,10 @@
 import enum
+from itertools import permutations
 
 
 class Character:
     def __init__(self):
         self.name = ""
-        self.card_name = ""
         self.str = 0
         self.end = 0
         self.dex = 0
@@ -70,14 +70,14 @@ class SkillPolicy(enum.Enum):
     extend_debuff = 3
 
 class Skill:
-    def __init__(self):
-        self.attack = Attack.none
-        self.ability = None
-        self.attr = Attr.none
-        self.scope = None
-        self.temp_boost = False
-        self.buffs = None
-        self.debuffs = None
+    def __init__(self, scope=None, attack=None, attr=None, ability=None, temp_boost=False, buffs=None, debuffs=None):
+        self.attack = attack
+        self.ability = ability
+        self.attr = attr
+        self.scope = scope
+        self.temp_boost = temp_boost
+        self.buffs = buffs
+        self.debuffs = debuffs
         self.idx = None
 
 def get_coeff(scope, attack):
@@ -119,11 +119,20 @@ def get_coeff(scope, attack):
     return coeff, coeff_tmp
 
 class Adventurer(Character):
-    def __init__(self):
+    def __init__(self, name, str_val=0, end_val=0, dex_val=0, agi_val=0, mag_val=0,
+                 skills = []):
         super().__init__()
+        self.name = name
+        self.str = str_val
+        self.end = end_val
+        self.dex = dex_val
+        self.agi = agi_val
+        self.mag = mag_val
+
         self.killer = None
         self.one_shot = False
-        self.skills = None
+        self.skills = skills
+        self.skills = [s for s in self.skills if s is not None]
         self.passive_skill = None
         self.steps = []
         self.stages_dmg = []
@@ -216,7 +225,6 @@ class Adventurer(Character):
             else:
                 raise ValueError
 
-
     def act(self):
         s = self.selected_skill
         dmg = 0
@@ -234,6 +242,7 @@ class Adventurer(Character):
             abl_up = self.got_buff[s.ability][0]
             attr_up = self.got_buff[s.attr][0]
             coeff, coeff_tmp = get_coeff(s.scope, s.attack)
+            return 0
 
             if s.scope == Scope.foe:
                 scope_dmg_up = foe_on_stage.got_debuff[s.scope][0]
@@ -263,13 +272,13 @@ class Adventurer(Character):
 class Assist(Character):
     def __init__(self):
         super().__init__()
-        self.passive_skill = None
+        self.assist_skill = None
 
 
 class Team:
-    def __init__(self, p1, p2, p3, p4, p5, p6):
+    def __init__(self, members):
         self.opponent_team = None
-        self.members = [p1, p2, p3, p4, p5, p6]
+        self.members = members
         for m in self.members:
             m.my_team = self
         self.members_on_stage = self.members[0: 4]
@@ -290,9 +299,9 @@ class Team:
         all_dmg = 0
         for m in self.members_on_stage:
             dmg = m.act()
-            print(f"{m.name}({m.card_name})\n => 招{m.selected_skill.idx}: 傷害{dmg}")
+            #print(f"{m.name}\n => 招{m.selected_skill.idx}: 傷害{dmg}")
             all_dmg += dmg
-        print(f"回合總傷害: {all_dmg}")
+        #print(f"回合總傷害: {all_dmg}")
         return all_dmg
 
 
@@ -313,65 +322,63 @@ class BattleStage:
         self.enemy_team.opponent_team = self.player_team
         for p in self.player_team.members:
             for idx, s in enumerate(p.skills):
-                s.idx = idx + 1
+                if s:
+                    s.idx = idx + 1
         for i in range(self.rounds):
-            print(f"round {i}")
+            #print(f"round {i}")
             self.player_team.select_skills()
             dmg = self.player_team.act()
-            print("=" * 60)
-        print("\n\n")
-        print("*" * 60)
+            #print("=" * 60)
+        #print("\n\n")
+        #print("*" * 60)
         for p in self.player_team.members:
-            print(f"{p.name}({p.card_name})\n 總傷害{p.total_dmg}")
+            pass
+            #print(f"{p.name}\n 總傷害{p.total_dmg}")
 
 
-p1 = Adventurer()
-p1.name = "艾斯"
-p1.card_name = "新裝銳氣"
-p1.str = 2133
-skill_1 = Skill()
-skill_1.attack = Attack.super
-skill_1.ability = Ability.str
-skill_1.scope = Scope.foe
-skill_1.attr = Attr.ice
-p1.skills = [skill_1]
+my_cards = [
+    Adventurer("新裝艾斯",2133, 0, 0, 0, 0,
+               [Skill(Scope.foe, Attack.super, Attr.ice, Ability.str, True, None, None)]
+               ),
+    Adventurer("英雄阿爾戈", 2108, 0, 0, 0, 0,
+               [Skill(Scope.foes, Attack.super, Attr.fire, Ability.str, True, None, None)]
+               ),
+    Adventurer("聖誕千草", 2011, 0, 0, 0, 0,
+               [Skill(Scope.foe, Attack.super, Attr.ice, Ability.str, True, None, None)]
+               ),
+    Adventurer("米卡莎", 1928, 0, 0, 0, 0,
+               [Skill(Scope.foe, Attack.high, Attr.dark, Ability.str, False, None, None)]
+               ),
+    Adventurer("米卡莎2", 1928, 0, 0, 0, 0,
+               [Skill(Scope.foe, Attack.high, Attr.dark, Ability.str, False, None, None)]
+               ),
+    Adventurer("米卡莎3", 1928, 0, 0, 0, 0,
+               [Skill(Scope.foe, Attack.high, Attr.dark, Ability.str, False, None, None)]
+               ),
+    Adventurer("米卡莎4", 1928, 0, 0, 0, 0,
+               [Skill(Scope.foe, Attack.high, Attr.dark, Ability.str, False, None, None)]
+               ),
+    Adventurer("米卡莎5", 1928, 0, 0, 0, 0,
+               [Skill(Scope.foe, Attack.high, Attr.dark, Ability.str, False, None, None)]
+               ),
+]
+cnt = 0
+print(f"模擬中...")
+for i in permutations(my_cards, 6):
+    #print("")
+    cnt += 1
 
-p2 = Adventurer()
-p2.name = "阿爾戈"
-p2.card_name = "始源英雄"
-p2.str = 2108
-skill_1 = Skill()
-skill_1.attack = Attack.super
-skill_1.ability = Ability.str
-skill_1.scope = Scope.foes
-skill_1.attr = Attr.fire
-p2.skills = [skill_1]
+    members = []
+    for p in i:
+        #print(p.name + ", ", end='')
+        members.append(p)
 
-p3 = Adventurer()
-p3.name = "千草"
-p3.card_name = "聖誕"
-p3.str = 2011
-skill_1 = Skill()
-skill_1.attack = Attack.super
-skill_1.ability = Ability.str
-skill_1.scope = Scope.foes
-skill_1.attr = Attr.ice
-p3.skills = [skill_1]
+    my_team = Team(members)
 
-p4 = Adventurer()
-p4.name = "米卡莎"
-p4.card_name = "訓練兵首席"
-p4.str = 1928
-skill_1 = Skill()
-skill_1.attack = Attack.high
-skill_1.ability = Ability.str
-skill_1.scope = Scope.foe
-skill_1.attr = Attr.dark
-p4.skills = [skill_1]
+    battle = BattleStage(16)
+    battle.add_player_team(my_team)
+    battle.add_enemy_team(my_team)
+    battle.run()
 
-my_team = Team(p1, p2, p3, p4, p1, p1)
-
-battle = BattleStage(16)
-battle.add_player_team(my_team)
-battle.add_enemy_team(my_team)
-battle.run()
+print(f"總共{cnt}總組合.")
+print(f"最佳組合是")
