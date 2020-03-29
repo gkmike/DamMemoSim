@@ -1,5 +1,5 @@
 import enum
-from itertools import permutations
+from itertools import permutations, combinations
 import copy
 
 class Character:
@@ -315,6 +315,16 @@ class Team:
         #print(f"回合總傷害: {all_dmg}")
         return all_dmg
 
+    def show_team(self):
+        for m in members:
+            print(f"{m.name:<10}", end=', ')
+        print("")
+        for m in members:
+            print(f"{m.assist.name:<10}", end=', ')
+        print("")
+        print("="*60)
+        
+
 
 class BattleStage:
     def __init__(self, rounds):
@@ -393,13 +403,14 @@ my_adv_cards = [
                ),
 ]
 cnt = 0
+cnt2 = 0
 print(f"模擬中...")
 for advs in permutations(my_adv_cards, 4):
-    for advs_one_shot in permutations(my_one_shot_adv_cards, 2):
-        for asses in permutations(my_ass_cards, 4):
-            for asses_one_shot in permutations(my_one_shot_ass_cards, 2):
+    for advs_one_shot in combinations(my_one_shot_adv_cards, 2):
+        for asses in combinations(my_ass_cards, 4):
+            cnt2 += 1
+            for asses_one_shot in combinations(my_one_shot_ass_cards, 2):
                 cnt += 1
-                continue
                 #print("")
                 advs = copy.deepcopy(advs)
                 advs_one_shot = copy.deepcopy(advs_one_shot)
@@ -415,10 +426,13 @@ for advs in permutations(my_adv_cards, 4):
 
                 my_team = Team(members)
 
+                my_team.show_team()
+
                 battle = BattleStage(1)
                 battle.add_player_team(my_team)
                 battle.add_enemy_team(my_team)
                 battle.run()
 
+print(f"{cnt2}")
 print(f"總共{cnt}總組合.")
 print(f"最佳組合是")
