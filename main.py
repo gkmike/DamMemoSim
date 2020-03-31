@@ -184,13 +184,15 @@ class Adventurer(Character):
     def __init__(self, name, str_val, end_val, dex_val, agi_val, mag_val, **kwargs):
         super().__init__(name, str_val, end_val, dex_val, agi_val, mag_val)
         self.killer = None  ## TODO
-        self.one_shot = False  ## TODO
         self.skills = kwargs.get("skills", None)
         # self.skills = [s for s in self.skills if s is not None]
         self.passive_skill = None  ## TODO
         self.steps_record = []
         self.stages_dmg_record = []
+        self.stages_effect_record = []
         self.total_dmg = 0
+        self.is_one_shot = False
+        self.is_dead = False
 
         self.got_buff = dict()
         self.got_debuff = dict()
@@ -209,13 +211,14 @@ class Adventurer(Character):
 
         self.assist = None
 
-        self.skill_policy = None ## TODO
+        self.skill_policy = None  ## TODO
         self.my_team = None
         self.selected_skill = None
 
     def reset(self):
         self.steps_record = []
         self.stages_dmg_record = []
+        self.stages_effect_record = []
         self.total_dmg = 0
         for buffs in [Ability, Damage, Endurance]:
             for buff in buffs:
@@ -228,11 +231,13 @@ class Adventurer(Character):
         self.assist = None
         self.skill_policy = None
         self.selected_skill = None
+        # don't reset one_shot
+        # self.is_one_shot = False
+        self.is_dead = False
 
     def set_assist(self, assist):
         self.assist = assist
         assist.my_adv = self
-        assist.my_team = self.my_team
 
     def need_buff(self, effect):
         return self.need_skill_effect(self.got_buff, effect)
@@ -240,7 +245,8 @@ class Adventurer(Character):
     def need_debuff(self, effect):
         return self.need_skill_effect(self.got_debuff, effect)
 
-    def need_skill_effect(self, look_up, effect):
+    @staticmethod
+    def need_skill_effect(look_up, effect):
         kind = effect.effect_enum
         value = effect.value
         cur_value = look_up[kind][0]
@@ -363,7 +369,8 @@ class Adventurer(Character):
         v2 = self.assist_debuff[effect]
         return v0 + v1 + v2
 
-    def set_effect(self, item, effect):
+    @staticmethod
+    def set_effect(item, effect):
         kind = effect.effect_enum
         value = effect.value
         turns = effect.turns
@@ -391,7 +398,8 @@ class Adventurer(Character):
     def set_assist_debuff(self, effect):
         self.set_effect(self.assist_debuff, effect)
 
-    def effect_next(self, item):
+    @staticmethod
+    def effect_next(item):
         item_val = item[0]
         item_turn = item[1]
         if item_turn == 0:
@@ -404,12 +412,29 @@ class Adventurer(Character):
             item[1] = item_turn - 1
 
     def next_turn(self):
+        # TODO: speed-up
+        all_buff = []
+        all_debuff = []
+        all_ass_buff = []
+        all_ass_debuff = []
         for effects_enum in [Ability, Damage, Endurance]:
             for effect_enum in effects_enum:
                 buff = self.got_buff[effect_enum]
                 debuff = self.got_debuff[effect_enum]
+                ass_buff = self.assist_buff[effect_enum]
+                ass_debuff = self.assist_debuff[effect_enum]
+                if buff[0] > 0:
+                    all_buff.append([effect_enum.name, buff[0]])
+                if debuff[0] > 0:
+                    all_debuff.append([effect_enum.name, debuff[0]])
+                if ass_buff > 0:
+                    all_ass_buff.append([effect_enum.name, ass_buff])
+                if ass_debuff > 0:
+                    all_ass_debuff.append([effect_enum.name, ass_debuff])
+
                 self.effect_next(buff)
                 self.effect_next(debuff)
+        self.stages_effect_record.append([all_buff, all_debuff, all_ass_buff, all_ass_debuff])
 
 
 class Assist(Character):
@@ -440,12 +465,12 @@ class Assist(Character):
 
 
 class Team:
-    def __init__(self, members):
+    def __init__(self, max_on_stage, members, assists=None):
         self.opponent_team = None
         self.members = members
-        for m in self.members:
-            m.my_team = self
-        self.members_on_stage = self.members[0: 4]
+        self.assists = assists
+        self.members_on_stage = self.members[0: max_on_stage]
+        self.members_on_reserve = self.members[max_on_stage:]
         self.hit_dmg_rounds = []
         self.got_dmg_rounds = []
         self.total_dmg = 0
@@ -479,20 +504,47 @@ class Team:
         return all_dmg
 
     def show_result(self):
-        for i, m in enumerate(members):
+        for i, m in enumerate(self.members):
             print(f"{i + 1}:")
-            print(f"    {m.name} + {m.assist.name} : {int(m.total_dmg):,} ({m.total_dmg / self.total_dmg * 100:,.0f}%)")
+            ass_name = ""
+            if m.assist:
+                ass_name = f"+ {m.assist.name}"
+            if self.total_dmg == 0:
+                self.total_dmg = 1
+            print(f"    {m.name} {ass_name} : {int(m.total_dmg):,} ({m.total_dmg / self.total_dmg * 100:,.0f}%)")
             print(f"    招式順序: {m.steps_record}")
         print(f"\n總傷害:{int(self.total_dmg):,}")
         print("=" * 60)
+        for m in self.members:
+            print(f"{m.name} 回合詳細")
+            for n_stage, info in enumerate(m.stages_effect_record):
+                print(f"  Turn {n_stage + 1}:")
+                buffs = info[0]
+                debuffs = info[1]
+                ass_buffs = info[2]
+                ass_debuffs = info[3]
+                print(f"    Buff:         {buffs}")
+                print(f"    DeBuff:       {debuffs}")
+                print(f"    AssistBuff:   {ass_buffs}")
+                print(f"    AssistDeBuff: {ass_debuffs}")
+
+            print("*" * 60)
+
+    def team_fill(self):
+        adv = None
+        for idx, m in enumerate(self.members_on_stage):
+            if m.is_one_shot or m.is_dead:
+                if len(self.members_on_reserve) > 0:
+                    adv = self.members_on_reserve.pop(0)
+                self.members_on_stage[idx] = adv
+        self.members_on_stage = [m for m in self.members_on_stage if m is not None]
+        if adv:
+            adv.assist.act()
 
     def next_turn(self):
+        self.team_fill()
         for m in self.members_on_stage:
             m.next_turn()
-
-    def reset(self):
-        for m in self.members:
-            m.reset()
 
     def inc_energy_bar(self, num):
         self.energy_bar += num
@@ -508,9 +560,23 @@ class Team:
             raise ValueError
 
     def init(self):
+        for m in self.members:
+            m.my_team = self
+        if self.assists:
+            for adv, ass in zip(self.members, self.assists):
+                adv.set_assist(ass)
+                ass.my_team = self
         for m in self.members_on_stage:
             if m.assist:
                 m.assist.act()
+
+    def reset(self):
+        self.hit_dmg_rounds = []
+        self.got_dmg_rounds = []
+        self.total_dmg = 0
+        self.energy_bar = 0
+        for m in self.members:
+            m.reset()
 
 
 class BattleStage:
@@ -549,25 +615,46 @@ class BattleStage:
 
 
 my_ass_cards = [
-    Assist("劇場乳神", 643 + 77, 0, 0, 0, 289,
+    Assist("劇場乳神", 643 + 77, 0, 0, 0, 289 + 77,
            skill=Skill(debuffs=[Effect(Scope.foes, Damage.foe, 0.15)])
            ),
-    Assist("月神", 571 + 72, 0, 0, 0, 284,
+    Assist("月神", 571 + 72, 0, 0, 0, 284 + 72,
            skill=Skill(buffs=[Effect(Scope.my_self, Ability.str, 0.15), Effect(Scope.my_team, Ability.str, 0.10)])
            ),
-    Assist("泳裝芙蕾雅", 461, 0, 0, 0, 441,
+    Assist("泳裝芙蕾雅", 461 + 72, 0, 0, 0, 441 + 72,
            skill=Skill(buffs=[Effect(Scope.my_team, Damage.ice, 0.10)])
            ),
-    Assist("製作人荷米斯1", 459, 0, 0, 0, 459,
+    Assist("製作人荷米斯", 459 + 72, 0, 0, 0, 459 + 72,
            skill=Skill(buffs=[Effect(Scope.my_team, Damage.fire, 0.10), Effect(Scope.my_team, Damage.light, 0.10)])
            ),
-    Assist("製作人荷米斯2", 459, 0, 0, 0, 459,
-           skill=Skill(buffs=[Effect(Scope.my_team, Damage.fire, 0.10), Effect(Scope.my_team, Damage.light, 0.10)])
+    Assist("聖爐乳神", 398 + 77, 0, 0, 0, 398 + 77,
+           skill=Skill(debuffs=[Effect(Scope.foes, Endurance.foes, 0.15)])
            ),
-    Assist("製作人荷米斯3", 459, 0, 0, 0, 459,
-           skill=Skill(buffs=[Effect(Scope.my_team, Damage.fire, 0.10), Effect(Scope.my_team, Damage.light, 0.10)])
+    Assist("泳裝埃伊娜", 356 + 56, 0, 0, 0, 372 + 72,
+           skill=Skill(debuffs=[Effect(Scope.foes, Endurance.ice, 0.15)])
            ),
+    Assist("奧娜", 412 + 72, 0, 0, 0, 412 + 72,
+           skill=Skill(debuffs=[Effect(Scope.foes, Damage.phy, 0.15), Effect(Scope.foes, Damage.mag, 0.15)])
+           ),
+    Assist("睡衣乳神", 562 + 77, 0, 0, 0, 293 + 77,
+           skill=Skill(debuffs=[Effect(Scope.foes, Endurance.thunder, 0.10)])
+           ),
+    Assist("流氓萬能", 379 + 40, 0, 0, 0, 446 + 41,
+           skill=Skill(buffs=[Effect(Scope.my_team, Ability.str, 0.08), Effect(Scope.my_team, Ability.mag, 0.08)])
+           ),
+    Assist("新娘希兒", 338 + 72, 0, 0, 0, 338 + 72,
+           skill=Skill(buffs=[Effect(Scope.my_team, Damage.ice, 0.10), Effect(Scope.my_team, Damage.dark, 0.10)],
+                       debuffs=[Effect(Scope.foes, Endurance.ice, 0.05), Effect(Scope.foes, Endurance.dark, 0.05)])
+           ),
+
 ]
+"""
+
+        Assist("鴨子乳神", 390 + 77, 0, 0, 0, 190 + 77,
+               skill=Skill(buffs=[Effect(Scope.my_team, Ability.str, 0.10)],
+                           debuffs=[Effect(Scope.foes, Endurance.ice, 0.10), Effect(Scope.foes, Endurance.wind, 0.10)])
+               ),
+               """
 my_one_shot_adv_cards = [
     Adventurer("新裝艾斯1", 2133, 0, 0, 0, 0,
                skills=[
@@ -602,75 +689,99 @@ my_adv_cards = [
                          buffs=[Effect(Scope.my_self, Damage.ice, 0.80, 4), Effect(Scope.my_self, Ability.str, 0.80, 4)]
                          ),
                ]),
-    Adventurer("英雄阿爾戈", 2108, 0, 0, 0, 0,
+    Adventurer("英雄阿爾戈", 1, 0, 0, 0, 0,
                skills=[Skill(Scope.foes, Power.super, Damage.fire, Attack.phy)]
                ),
-    Adventurer("聖誕千草", 2011, 0, 0, 0, 0,
+    Adventurer("聖誕千草", 1, 0, 0, 0, 0,
                skills=[Skill(Scope.foe, Power.super, Damage.ice, Attack.phy)]
                ),
-    Adventurer("米卡莎", 1928, 0, 0, 0, 0,
+    Adventurer("米卡莎", 1, 0, 0, 0, 0,
                skills=[Skill(Scope.foe, Power.high, Damage.dark, Attack.phy)]
                ),
-    Adventurer("米卡莎2", 1928, 0, 0, 0, 0,
-               skills=[Skill(Scope.foe, Power.high, Damage.dark, Attack.phy)]
-               ),
-    Adventurer("米卡莎3", 1928, 0, 0, 0, 0,
-               skills=[Skill(Scope.foe, Power.high, Damage.dark, Attack.phy)]
-               ),
-    Adventurer("米卡莎4", 1928, 0, 0, 0, 0,
-               skills=[Skill(Scope.foe, Power.high, Damage.dark, Attack.phy)]
-               ),
-    Adventurer("米卡莎5", 1928, 0, 0, 0, 0,
+    Adventurer("米卡莎2", 1, 0, 0, 0, 0,
                skills=[Skill(Scope.foe, Power.high, Damage.dark, Attack.phy)]
                ),
 ]
-cnt = 0
-best_team = None
-print(f"模擬中...")
-
-boss_1 = Adventurer("九魔姬", 0, 100, 0, 0, 1000,
-                    skills=[Skill(Scope.foes, Power.high, Damage.dark, Attack.mag)]
-                    )
-enemy_team = Team([boss_1])
 
 
-def check_team_valid(team1, team2):
-    for m1 in team1:
-        for m2 in team2:
-            if m1.name == m2.name:
-                return False
-    return True
+def main():
+    cnt = 0
+    best_team = None
+    print(f"模擬中...")
+
+    boss_1 = Adventurer("九魔姬", 0, 100, 0, 0, 1000,
+                        skills=[Skill(Scope.foes, Power.high, Damage.dark, Attack.mag)]
+                        )
+    enemy_team = Team(4, [boss_1])
+
+    """
+        TESTING BEGIN *************************************************************************************************
+    """
+
+    testing = False
+    if testing is True:
+        my_adv_cards[3].is_one_shot = True
+        my_adv_cards[4].is_one_shot = True
+        my_team = Team(4, my_adv_cards[0:6], my_ass_cards[0:6])
+        my_team.reset()
+        enemy_team.reset()
+
+        battle = BattleStage(9)
+        battle.add_player_team(my_team)
+        battle.add_enemy_team(enemy_team)
+        battle.run()
+        my_team.show_result()
+        exit(0)
+    """
+        TESTING END ***************************************************************************************************
+    """
+
+    def check_team_valid(team1, team2):
+        for m1 in team1:
+            for m2 in team2:
+                if m1.name == m2.name:
+                    return False
+        return True
+
+    total_comb = len(list(combinations(my_ass_cards, 6))) * \
+                 len(list(permutations(my_adv_cards, 4))) * \
+                 len(list(combinations(my_one_shot_adv_cards, 2)))
+
+    for asses in combinations(my_ass_cards, 6):
+        for advs in permutations(my_adv_cards, 4):
+            for advs_one_shot in combinations(my_one_shot_adv_cards, 2):
+                if check_team_valid(advs, advs_one_shot) is False:
+                    continue
+                cnt += 1
+                print(f"\r{cnt}/{total_comb}", end='')
+                for m in advs_one_shot:
+                    m.is_one_shot = True
+                for m in advs:
+                    m.is_one_shot = False
+
+                members = list(advs[0:3])
+                members.extend(advs_one_shot)
+                members.append(advs[3])
+
+                my_team = Team(4, members, asses)
+                my_team.reset()
+                enemy_team.reset()
+
+                battle = BattleStage(9)
+                battle.add_player_team(my_team)
+                battle.add_enemy_team(enemy_team)
+                battle.run()
+
+                if best_team is None:
+                    best_team = my_team
+                else:
+                    if my_team.total_dmg > best_team.total_dmg:
+                        best_team = copy.deepcopy(my_team)
+
+    #print(f"總共{cnt}組合.")
+    print(f"最佳組合是:")
+    best_team.show_result()
+    enemy_team.show_result()
 
 
-for asses in combinations(my_ass_cards, 6):
-    for advs in permutations(my_adv_cards, 4):
-        for advs_one_shot in combinations(my_one_shot_adv_cards, 2):
-            if check_team_valid(advs, advs_one_shot) is False:
-                continue
-            cnt += 1
-            members = list(advs[0:3])
-            members.extend(advs_one_shot)
-            members.append(advs[3])
-
-            my_team = Team(members)
-            my_team.reset()
-            enemy_team.reset()
-
-            for adv, ass in zip(members, asses):
-                adv.set_assist(ass)
-                adv.skill_policy = SkillPolicy.buff
-
-            battle = BattleStage(9)
-            battle.add_player_team(my_team)
-            battle.add_enemy_team(enemy_team)
-            battle.run()
-
-            if best_team is None:
-                best_team = my_team
-            else:
-                if my_team.total_dmg > best_team.total_dmg:
-                    best_team = copy.deepcopy(my_team)
-
-print(f"總共{cnt}總組合.")
-print(f"最佳組合是:")
-best_team.show_result()
+main()
