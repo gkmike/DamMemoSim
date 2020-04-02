@@ -130,6 +130,10 @@ class SkillPolicy:
     debuff = "SkillPolicy.debuff"
     extend_buff = "SkillPolicy.extend_buff"
     extend_debuff = "SkillPolicy.extend_debuff"
+    shorten_buff = "SkillPolicy.shorten_buff"
+    shorten_debuff = "SkillPolicy.shorten_debuff"
+    # clear_buff not impl
+    # clear_debuff not impl
 
 
 class SpecialPolicy:
@@ -267,6 +271,10 @@ class Adventurer(Character):
                 self.skill_policy_lambdas.append(self.set_buff_skill)
             elif p == SkillPolicy.debuff:
                 self.skill_policy_lambdas.append(self.set_debuff_skill)
+            elif p == SkillPolicy.extend_buff:
+                self.skill_policy_lambdas.append(self.set_extend_buff_skill)
+            elif p == SkillPolicy.extend_debuff:
+                self.skill_policy_lambdas.append(self.set_extend_debuff_skill)
             else:
                 raise Exception
 
@@ -302,6 +310,20 @@ class Adventurer(Character):
     def set_assist(self, assist):
         self.assist = assist
         assist.my_adv = self
+
+    def buff_turns_is_one(self):
+        for eff in list(self.buff_need_check):
+            item = self.got_buff[eff]
+            if item[1] == 1:
+                return True
+        return False
+
+    def debuff_turns_is_one(self):
+        for eff in list(self.debuff_need_check):
+            item = self.got_debuff[eff]
+            if item[1] == 1:
+                return True
+        return False
 
     def need_buff(self, effect):
         return self.need_skill_effect(self.got_buff, effect)
@@ -353,10 +375,68 @@ class Adventurer(Character):
                     raise Exception
         return False
 
+    def set_extend_buff_skill(self, special_avail):
+        for s in self.skills:
+            if s.is_special:
+                continue
+            for effect in s.adj_buffs:
+                if effect.effect_enum == AdjBuff.extend_buff:
+                    if effect.scope == Scope.my_team:
+                        if self.my_team.buff_turns_is_one():
+                            self.selected_skill = s
+                            return True
+                    elif effect.scope == Scope.my_self:
+                        if self.buff_turns_is_one():
+                            self.selected_skill = s
+                            return True
+                    else:
+                        raise Exception
+        return False
+
+    def set_extend_debuff_skill(self, special_avail):
+        for s in self.skills:
+            if s.is_special:
+                continue
+            for effect in s.adj_buffs:
+                if effect.effect_enum == AdjBuff.extend_debuff:
+                    if self.my_team.opponent_team.debuff_turns_is_one():
+                        self.selected_skill = s
+                        return True
+        return False
+
+    def set_shorten_buff_skill(self, special_avail):
+        for s in self.skills:
+            if s.is_special:
+                continue
+            for effect in s.adj_buffs:
+                if effect.effect_enum == AdjBuff.shorten_buff:
+                    if not self.my_team.opponent_team.buff_turns_is_one():
+                        self.selected_skill = s
+                        return True
+        return False
+
+    def set_shorten_debuff_skill(self, special_avail):
+        for s in self.skills:
+            if s.is_special:
+                continue
+            for effect in s.adj_buffs:
+                if effect.effect_enum == AdjBuff.shorten_debuff:
+                    if effect.scope == Scope.my_team:
+                        if self.my_team.debuff_turns_is_one():
+                            self.selected_skill = s
+                            return True
+                    elif effect.scope == Scope.my_self:
+                        if not self.debuff_turns_is_one():
+                            self.selected_skill = s
+                            return True
+                    else:
+                        raise Exception
+            return False
+
     def select_skill(self, special_avail):
         if self.predefined_steps is not None:
             if len(self.predefined_steps) < self.battle_stage.max_turns:
-                raise Exception("預排技能順序定回合數不足")
+                raise Exception("預排技能順序數量不足回合數")
             skill_idx = self.predefined_steps[self.battle_stage.cur_turn - 1]
             self.selected_skill = self.skills[skill_idx - 1]
             return
@@ -668,6 +748,18 @@ class Team:
                 return True
         return False
 
+    def buff_turns_is_one(self):
+        for m in self.members_on_stage:
+            if m.buff_turns_is_one():
+                return True
+        return False
+
+    def debuff_turns_is_one(self):
+        for m in self.members_on_stage:
+            if m.debuff_turns_is_one():
+                return True
+        return False
+
     def act(self):
         all_dmg = 0
         for m in self.members_on_stage:
@@ -834,45 +926,67 @@ class MyCards:
 
 
 my_ass_cards = MyCards([
-    Assist("劇場乳神", 643 + 77, 0, 0, 0, 289 + 77,
+    Assist("劇場乳神", 643 + 77, 0, 0, 0, 289 + 77, tags=[Damage.foe],
            skill=Skill(debuffs=[Effect(Scope.foes, Damage.foe, 0.15)])
            ),
-    Assist("月神", 571 + 72, 0, 0, 0, 284 + 72,
+    Assist("月神", 571 + 72, 0, 0, 0, 284 + 72, tags=[Ability.str],
            skill=Skill(buffs=[Effect(Scope.my_self, Ability.str, 0.15), Effect(Scope.my_team, Ability.str, 0.10)])
            ),
-    Assist("泳裝芙蕾雅", 461 + 72, 0, 0, 0, 441 + 72,
+    Assist("泳裝芙蕾雅", 461 + 72, 0, 0, 0, 441 + 72, tags=[Damage.ice],
            skill=Skill(buffs=[Effect(Scope.my_team, Damage.ice, 0.10)])
            ),
-    Assist("製作人荷米斯", 459 + 72, 0, 0, 0, 459 + 72,
+    Assist("製作人荷米斯", 459 + 72, 0, 0, 0, 459 + 72, tags=[Damage.light, Damage.fire],
            skill=Skill(buffs=[Effect(Scope.my_team, Damage.fire, 0.10), Effect(Scope.my_team, Damage.light, 0.10)])
            ),
-    Assist("聖爐乳神", 398 + 77, 0, 0, 0, 398 + 77,
+    Assist("聖爐乳神", 398 + 77, 0, 0, 0, 398 + 77, tags=[Damage.foes],
            skill=Skill(debuffs=[Effect(Scope.foes, Endurance.foes, 0.15)])
            ),
-    Assist("泳裝埃伊娜", 356 + 56, 0, 0, 0, 372 + 72,
+    Assist("泳裝埃伊娜", 356 + 56, 0, 0, 0, 372 + 72, tags=[Damage.ice],
            skill=Skill(debuffs=[Effect(Scope.foes, Endurance.ice, 0.15)])
            ),
-    Assist("奧娜", 412 + 72, 0, 0, 0, 412 + 72,
+    Assist("奧娜", 412 + 72, 0, 0, 0, 412 + 72, tags=[Damage.phy, Damage.mag],
            skill=Skill(debuffs=[Effect(Scope.foes, Damage.phy, 0.15), Effect(Scope.foes, Damage.mag, 0.15)])
            ),
-    Assist("睡衣乳神", 562 + 77, 0, 0, 0, 293 + 77,
+    Assist("睡衣乳神", 562 + 77, 0, 0, 0, 293 + 77, tags=[Damage.thunder],
            skill=Skill(debuffs=[Effect(Scope.foes, Endurance.thunder, 0.10)])
            ),
-    Assist("流氓萬能", 379 + 40, 0, 0, 0, 446 + 41,
+    Assist("流氓萬能", 379 + 40, 0, 0, 0, 446 + 41, tags=[Damage.phy, Damage.mag],
            skill=Skill(buffs=[Effect(Scope.my_team, Ability.str, 0.08), Effect(Scope.my_team, Ability.mag, 0.08)])
            ),
-    Assist("新娘希兒", 338 + 72, 0, 0, 0, 338 + 72,
+    Assist("新娘希兒", 338 + 72, 0, 0, 0, 338 + 72, tags=[Damage.mag],
            skill=Skill(buffs=[Effect(Scope.my_team, Damage.ice, 0.10), Effect(Scope.my_team, Damage.dark, 0.10)],
                        debuffs=[Effect(Scope.foes, Endurance.ice, 0.05), Effect(Scope.foes, Endurance.dark, 0.05)])
            ),
-    Assist("鴨子乳神", 390 + 77, 0, 0, 0, 190 + 77,
+    Assist("鴨子乳神", 390 + 77, 0, 0, 0, 190 + 77, tags=[Ability.str, Damage.wind, Damage.ice],
            skill=Skill(buffs=[Effect(Scope.my_team, Ability.str, 0.10)],
                        debuffs=[Effect(Scope.foes, Endurance.ice, 0.10), Effect(Scope.foes, Endurance.wind, 0.10)])
+           ),
+    Assist("伯爵希兒", 323 + 72, 0, 0, 0, 389 + 72, tags=[Ability.energy_bar],
+           skill=Skill(buffs=[Effect(Scope.my_self, Ability.energy_bar, 0.66)])
+           ),
+    Assist("情人埃伊娜", 299 + 56, 0, 0, 0, 315 + 72, tags=[Damage.light, Damage.earth],
+           skill=Skill(buffs=[Effect(Scope.my_team, Damage.light, 0.10), Effect(Scope.my_team, Damage.earth, 0.10)],
+                       debuffs=[Effect(Scope.foes, Endurance.light, 0.05), Effect(Scope.foes, Endurance.earth, 0.05)])
+           ),
+    Assist("新娘乳神", 221 + 77, 0, 0, 0, 486 + 77, tags=[Ability.mag],
+           skill=Skill(buffs=[Effect(Scope.my_team, Ability.mag, 0.15)])
+           ),
+    Assist("阿波羅", 371 + 36, 0, 0, 0, 153+36, tags=[Ability.str, Damage.light, Damage.fire],
+           skill=Skill(buffs=[Effect(Scope.my_team, Ability.str, 0.10)],
+                       debuffs=[Effect(Scope.foes, Endurance.light, 0.10), Effect(Scope.foes, Endurance.fire, 0.10)])
+           ),
+    Assist("炸彈娘-蒂", 324 + 36, 0, 0, 0, 150 + 36, tags=[Ability.str, Damage.light, Damage.earth],
+           skill=Skill(buffs=[Effect(Scope.my_team, Ability.str, 0.10),
+                              Effect(Scope.my_team, Damage.fire, 0.08), Effect(Scope.my_team, Damage.earth, 0.08)])
+           ),
+    Assist("劍之聖女", 256+36, 0, 0, 0, 276+36, tags=[Damage.thunder, Damage.dark],
+           skill=Skill(buffs=[Effect(Scope.my_team, Damage.thunder, 0.10)],
+                       debuffs=[Effect(Scope.foes, Endurance.dark, 0.10)])
            ),
 ])
 
 my_adv_cards = MyCards([
-    Adventurer("新裝艾斯", 2133 + 808, 0, 0, 0, 0, tags=[Damage.phy, Damage.ice],
+    Adventurer("新裝艾斯", 2133 + 808, 0, 0, 0, 0, tags=[Damage.phy, Damage.ice, Scope.foe, Scope.foes],
                skills=[
                    Skill(
                        buffs=[Effect(Scope.my_self, Damage.ice, 0.60, 4), Effect(Scope.my_self, Ability.str, 0.60, 4)]),
@@ -882,7 +996,7 @@ my_adv_cards = MyCards([
                          buffs=[Effect(Scope.my_self, Damage.ice, 0.80, 4), Effect(Scope.my_self, Ability.str, 0.80, 4)]
                          ),
                ]),
-    Adventurer("英雄阿爾戈", 2180 + 813, 0, 0, 0, 0, tags=[Damage.phy, Damage.fire],
+    Adventurer("英雄阿爾戈", 2180 + 813, 0, 0, 0, 0, tags=[Damage.phy, Damage.fire, Scope.foe, Scope.foes],
                skills=[
                    Skill(Scope.foes, Power.low, Damage.fire, Attack.phy,
                          buffs=[Effect(Scope.my_self, Damage.fire, 0.50, 4),
@@ -894,14 +1008,14 @@ my_adv_cards = MyCards([
                          debuffs=[Effect(Scope.foes, Endurance.foes, 0.30, 1)]
                          ),
                ]),
-    Adventurer("聖誕千草", 2011 + 748, 0, 0, 0, 0, tags=[Damage.phy, Damage.ice],
+    Adventurer("聖誕千草", 2011 + 748, 0, 0, 0, 0, tags=[Damage.phy, Damage.ice, Scope.foe, Scope.foes],
                skills=[Skill(buffs=[Effect(Scope.my_self, Ability.energy_bar, 1, 5)]),
                        Skill(Scope.foes, Power.super, Damage.ice, Attack.phy, temp_boost=True,
                              adj_buffs=[Effect(Scope.my_self, AdjBuff.clear_debuff, 0, 0)]),
                        Skill(Scope.foe, Power.high, Damage.ice, Attack.phy),
                        ]
                ),
-    Adventurer("米卡莎", 1928 + 637, 0, 0, 0, 0, tags=[Damage.phy, Damage.dark, Damage.foe],
+    Adventurer("米卡莎", 1928 + 637, 0, 0, 0, 0, tags=[Damage.phy, Damage.dark, Scope.foe],
                skills=[Skill(Scope.foe, Power.low, Damage.dark, Attack.phy,
                              buffs=[Effect(Scope.my_self, Ability.str, 0.75, 4)]),
                        Skill(Scope.foe, Power.mid, Damage.dark, Attack.phy,
@@ -911,7 +1025,7 @@ my_adv_cards = MyCards([
                        Skill(Scope.foe, Power.ultra, Damage.dark, Attack.phy, is_special=True, temp_boost=True),
                        ]
                ),
-    Adventurer("劇場莉莉", 1927 + 641, 0, 0, 0, 0, tags=[Damage.phy, Damage.thunder, Damage.foe],
+    Adventurer("劇場莉莉", 1927 + 641, 0, 0, 0, 0, tags=[Damage.phy, Damage.thunder, Scope.foe],
                skills=[Skill(Scope.foe, Power.high, Damage.thunder, Attack.phy, temp_boost=True,
                              debuffs=[Effect(Scope.foe, Endurance.foe, 0.15, 4)]),
                        Skill(Scope.foe, Power.high, Damage.thunder, Attack.phy, temp_boost=True,
@@ -921,7 +1035,7 @@ my_adv_cards = MyCards([
                        Skill(Scope.foe, Power.ultra, Damage.thunder, Attack.phy, is_special=True, temp_boost=True),
                        ]
                ),
-    Adventurer("歌殺", 2120 + 806, 0, 0, 0, 0, tags=[Damage.phy, Damage.dark, Mission.one_shot],
+    Adventurer("歌殺", 2120 + 806, 0, 0, 0, 0, tags=[Damage.phy, Damage.dark, Mission.one_shot, Scope.foe],
                skills=[
                    Skill(
                        debuffs=[Effect(Scope.foes, Endurance.phy, 0.30, 4), Effect(Scope.foes, Endurance.dark, 0.30, 4)]),
@@ -935,13 +1049,49 @@ my_adv_cards = MyCards([
                                 Effect(Scope.my_self, Ability.str, 0.90, 3)]
                          ),
                ]),
-    Adventurer("古代黑肉", 1331 + 484, 0, 0, 0, 0, tags=[Damage.phy, Damage.dark, Mission.one_shot],
+    Adventurer("古代黑肉", 1331 + 484, 0, 0, 0, 0, tags=[Mission.one_shot],
                skills=[
                    Skill(Scope.foe, Power.high, Damage.dark, Attack.phy, temp_boost=True),
                    Skill(Scope.foes, Power.super, Damage.dark, Attack.phy, temp_boost=True),
                    Skill(Scope.foes, Power.high, Damage.dark, Attack.phy,
                          debuffs=[Effect(Scope.foes, Endurance.foes, 0.30, 3)]),
                    Skill(Scope.foes, Power.ultra, Damage.dark, Attack.phy, is_special=True),
+               ]),
+    Adventurer("聖誕樁", 1751+732, 0, 0, 0, 0, tags=[Damage.phy, Damage.ice, Scope.foe, Scope.foes, Mission.one_shot],
+               skills=[
+                   Skill(Scope.foes, Power.mid, Damage.ice, Attack.phy,
+                         debuffs=[Effect(Scope.foes, Endurance.phy, 0.30, 3), Effect(Scope.foes, Endurance.ice, 0.30, 3)]),
+                   Skill(Scope.foes, Power.high, Damage.ice, Attack.phy),
+                   Skill(Scope.foe, Power.high, Damage.ice, Attack.phy),
+                   Skill(Scope.foe, Power.ultra, Damage.ice, Attack.phy, is_special=True, temp_boost=True),
+               ]),
+    Adventurer("折紙", 0, 0, 0, 0, 2045 + 880, tags=[Damage.mag, Damage.light, Scope.foe, Scope.foes],
+               skills=[
+                   Skill(Scope.foe, Power.high, Damage.light, Attack.mag, temp_boost=True,
+                         debuffs=[Effect(Scope.foe, Endurance.phy, 0.35, 4)]),
+                   Skill(Scope.foe, Power.mid, Damage.light, Attack.mag,
+                         buffs=[Effect(Scope.my_self, Ability.mag, 0.80, 4)]),
+                   Skill(Scope.foes, Power.high, Damage.light, Attack.mag, temp_boost=True),
+                   Skill(Scope.foe, Power.ultra, Damage.light, Attack.mag, is_special=True, temp_boost=True),
+               ]),
+    Adventurer("春姬", 0, 0, 0, 0, 2045 + 880, tags=[Damage.mag, Damage.fire, Scope.foe, Scope.foes],
+               skills=[
+                   Skill(),
+                   Skill(),
+                   Skill(adj_buffs=[Effect(Scope.foes, AdjBuff.extend_debuff, 2, 0),
+                                    Effect(Scope.my_team, AdjBuff.extend_buff, 2, 0)]),
+                   Skill(is_special=True, buffs=[Effect(Scope.my_team, Ability.mag, 1.0, 3),
+                                Effect(Scope.my_team, Ability.str, 1.0, 3)]),
+               ]),
+    Adventurer("泳裝媽媽", 0, 0, 0, 0, 1242+489, tags=[Damage.mag, Damage.ice, Scope.foe, Mission.one_shot],
+               skills=[
+                   Skill(Scope.foe, Power.low, Damage.ice, Attack.mag,
+                         buffs=[Effect(Scope.my_team, Ability.mag, 0.40, 3),
+                                Effect(Scope.my_team, Damage.ice, 0.40, 3)]),
+                   Skill(Scope.foe, Power.high, Damage.ice, Attack.mag),
+                   Skill(Scope.foe, Power.super, Damage.ice, Attack.mag,
+                         debuffs=[Effect(Scope.foe, Endurance.foe, 0.20, 3)]),
+                   Skill(Scope.foe, Power.ultra, Damage.ice, Attack.mag, is_special=True),
                ]),
 ])
 
@@ -976,7 +1126,7 @@ def my_plan():
             my_adv_cards.get_card_by_name("聖誕千草"),
             my_adv_cards.get_card_by_name("米卡莎").set_one_shot(),
             my_adv_cards.get_card_by_name("劇場莉莉").set_one_shot(),
-            my_adv_cards.get_card_by_name("歌殺")]
+            my_adv_cards.get_card_by_name("春姬")]
 
     asses = [my_ass_cards.get_card_by_name("劇場乳神"),
              my_ass_cards.get_card_by_name("月神"),
@@ -986,7 +1136,7 @@ def my_plan():
              my_ass_cards.get_card_by_name("泳裝埃伊娜")]
 
     team1 = Team(4, advs, asses)
-    team1.set_skill_policy_order([SkillPolicy.debuff, SkillPolicy.buff])
+    team1.set_skill_policy_order([SkillPolicy.debuff, SkillPolicy.buff, SkillPolicy.extend_buff, SkillPolicy.extend_debuff])
 
     battle = BattleStage(16)
     battle.add_player_team(team1)
@@ -1004,17 +1154,19 @@ def sim_all():
 
     enemy_team = get_enemy_team()
 
-    ass_cards = my_ass_cards.get_card_list()[0:9]
-    adv_cards = my_adv_cards.get_card_list()[0:8]
+    ass_cards = my_ass_cards.select_tag(Damage.ice).get_card_list() + \
+                my_ass_cards.select_tag(Ability.str).get_card_list() + \
+                my_ass_cards.select_tag(Damage.foe).get_card_list()
+    adv_cards = my_adv_cards.select_tag(Scope.foes).select_tag(Damage.phy).select_tag(Damage.ice).get_card_list()
     adv_one_shot_cards = my_adv_cards.select_tag(Mission.one_shot).get_card_list()
 
-    total_comb = (len(list(combinations(ass_cards, 6))) *
-                  len(list(permutations(adv_cards, 4))) *
+    total_comb = (len(list(permutations(ass_cards, 6))) *
+                  len(list(combinations(adv_cards, 3))) *
                   len(list(combinations(adv_one_shot_cards, 2)))
                   )
 
-    for asses in combinations(ass_cards, 6):
-        for advs in permutations(adv_cards, 4):
+    for asses in permutations(ass_cards, 6):
+        for advs in combinations(adv_cards, 3):
             for advs_one_shot in combinations(adv_one_shot_cards, 2):
                 cnt += 1
                 if check_team_valid(advs, advs_one_shot) is False:
@@ -1025,9 +1177,11 @@ def sim_all():
 
                 members = list(advs[0:3])
                 members.extend(advs_one_shot)
-                members.append(advs[3])
+                members.append(my_adv_cards.get_card_by_name("春姬"))
 
                 my_team = Team(4, members, asses)
+                my_team.set_skill_policy_order(
+                    [SkillPolicy.debuff, SkillPolicy.buff, SkillPolicy.extend_buff, SkillPolicy.extend_debuff])
 
                 battle = BattleStage(9)
                 battle.add_player_team(my_team)
