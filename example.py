@@ -207,4 +207,5 @@ battle.run()
 
 
 ranker.add(battle)
-ranker.report(detail=True)
+# ranker.report(detail=True)
+ranker.report()

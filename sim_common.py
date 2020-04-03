@@ -566,7 +566,7 @@ class Team:
             if m.is_one_shot:
                 print(f"  {m.name} + {m.assist.name} (屍體)")
             else:
-                print(f"  {m.name} + {m.assist.name} ({m.total_dmg / self.total_dmg * 100:,.0f}%)")
+                print(f"  {m.name} + {m.assist.name} = {int(m.total_dmg)} ({m.total_dmg / self.total_dmg * 100:,.0f}%)")
         print(f"剩餘氣條: {self.energy_bar/15:.2f}")
 
     def show_result(self):
@@ -711,7 +711,7 @@ class Ranker:
         top_dmg = int(battle_result[0].player_team.total_dmg)
 
         for idx, b in enumerate(battle_result):
-            print(f"傷害: {int(b.player_team.total_dmg):,} (rank {idx+1} {b.player_team.total_dmg / top_dmg * 100:,.0f}%)")
+            print(f"總傷害: {int(b.player_team.total_dmg):,} (rank {idx+1} {b.player_team.total_dmg / top_dmg * 100:,.0f}%)")
             b.player_team.show_berif()
             if show_detail:
                 b.player_team.show_result()
