@@ -770,6 +770,14 @@ class Team:
         self.total_dmg += all_dmg
         return all_dmg
 
+    def show_berif(self):
+        for i, m in enumerate(self.members):
+            if m.is_one_shot:
+                print(f"  {m.name} + {m.assist.name} (屍體)")
+            else:
+                print(f"  {m.name} + {m.assist.name} ({m.total_dmg / self.total_dmg * 100:,.0f}%)")
+        print(f"剩餘氣條: {self.energy_bar/15:.2f}")
+
     def show_result(self):
         for i, m in enumerate(self.members):
             print(f"{i + 1}:")
@@ -1119,6 +1127,7 @@ def get_enemy_team():
 
 
 def my_plan():
+    my_team_result = []
     enemy_team = get_enemy_team()
 
     advs = [my_adv_cards.get_card_by_name("新裝艾斯"), # .set_predefined_steps([1, 2, 2, 2, 4, 2, 2, 2, 4]),
@@ -1136,15 +1145,25 @@ def my_plan():
              my_ass_cards.get_card_by_name("泳裝埃伊娜")]
 
     team1 = Team(4, advs, asses)
-    team1.set_skill_policy_order([SkillPolicy.debuff, SkillPolicy.buff, SkillPolicy.extend_buff, SkillPolicy.extend_debuff])
+    # team1.set_skill_policy_order([SkillPolicy.debuff, SkillPolicy.buff,
+    #                              SkillPolicy.extend_buff, SkillPolicy.extend_debuff])
 
     battle = BattleStage(16)
     battle.add_player_team(team1)
-    battle.add_enemy_team(enemy_team)
+    battle.add_enemy_team(copy.deepcopy(enemy_team))
     battle.run()
+    my_team_result.append(copy.deepcopy(team1))
+    battle.end()
 
-    team1.show_result()
-    enemy_team.show_result()
+    my_team_result = sorted(my_team_result, key=lambda team: team.total_dmg)
+    top_dmg = int(my_team_result[0].total_dmg)
+
+    for idx, t in enumerate(my_team_result):
+        print(f"傷害: {int(t.total_dmg):,} (rank {idx+1} {t.total_dmg / top_dmg * 100:,.0f}%)")
+        t.show_berif()
+    print("="*60)
+    #my_team_result[0].show_result()
+    #my_team_result[0].opponent_team.show_result()
 
 
 def sim_all():
