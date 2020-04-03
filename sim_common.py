@@ -21,11 +21,13 @@ class Ability:
     str = "Ability.str"
     mag = "Ability.mag"
     end = "Ability.end"
+    dex = "Ability.dex"
+    agi = "Ability.agi"
     energy_bar = 'Ability.energy_bar'
 
     @classmethod
     def get_enums(cls):
-        return [cls.str, cls.mag, cls.end, cls.energy_bar]
+        return [cls.str, cls.mag, cls.end, cls.dex, cls.agi, cls.energy_bar]
 
 
 class Attack:
@@ -203,6 +205,7 @@ class Skill:
             self.attr_end_ref = Endurance.get_from_dmg_enum(attr_dmg)
         self.scope = scope
         self.temp_boost = kwargs.get("temp_boost", False)
+        self.boost_by_buff = kwargs.get("boost_by_buff", [])
         self.buffs = kwargs.get("buffs", [])
         self.debuffs = kwargs.get("debuffs", [])
         self.adj_buffs = kwargs.get("adj_buffs", [])
@@ -303,6 +306,15 @@ class Adventurer(Character):
 
             attr_dmg_up = self.calc_total_buff(s.attr_dmg)
 
+            total_boost_by = 0
+
+            for boost in s.boost_by_buff:
+                eff = boost.effect_enum
+                num = self.count_buff_num(eff)
+                up_rate = boost.value
+                total_boost_by += up_rate * num
+
+
             if s.scope == Scope.foe:
                 f = foe_on_stage
                 foe_end = f.calc_total_buff(Endurance.foe)
@@ -312,6 +324,7 @@ class Adventurer(Character):
                 end = f.end
                 dmg = ((atk * (1 + abl_up) * (1 + s.coeff_tmp_boost) - end * (1 + end_up))
                        * s.coeff
+                       * (1 + total_boost_by)
                        * (1 + attr_dmg_up)
                        * (1 - attr_end - atk_end)
                        * (1 - foe_end)
@@ -325,6 +338,7 @@ class Adventurer(Character):
                     end = f.end
                     dmg = ((atk * (1 + abl_up) * (1 + s.coeff_tmp_boost) - end * (1 + end_up))
                            * s.coeff
+                           * (1 + total_boost_by)
                            * (1 + attr_dmg_up)
                            * (1 - attr_end - atk_end)
                            * (1 - foes_end)
@@ -368,6 +382,26 @@ class Adventurer(Character):
         self.my_team.inc_energy_bar(1 + energy_bar_boost)
 
         return dmg
+
+    def count_buff_num(self, effect):
+        cnt = 0
+        n1 = self.got_buff[effect][0]
+        n2 = self.assist_buff[effect]
+        if n1 > 0:
+            cnt += 1
+        if n2 > 0:
+            cnt += 1
+        return cnt
+
+    def calc_debuff_num(self, effect):
+        cnt = 0
+        n1 = self.got_debuff[effect][0]
+        n2 = self.assist_debuff[effect]
+        if n1 > 0:
+            cnt += 1
+        if n2 > 0:
+            cnt += 1
+        return cnt
 
     def calc_buff_value(self, effect):
         v0 = self.got_buff[effect][0]

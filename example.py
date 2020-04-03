@@ -2,7 +2,8 @@ from sim_common import *
 
 my_ass_cards = MyCards([
     Assist("劇場乳神", 643 + 77, 0, 0, 0, 289 + 77, tags=[Damage.foe],
-           skill=Skill(debuffs=[Effect(Scope.foes, Damage.foe, 0.15)])
+           skill=Skill(debuffs=[Effect(Scope.foes, Damage.foe, 0.15)], 
+                       buffs=[Effect(Scope.my_team, Ability.dex, 0.20)])
            ),
     Assist("月神", 571 + 72, 0, 0, 0, 284 + 72, tags=[Ability.str],
            skill=Skill(buffs=[Effect(Scope.my_self, Ability.str, 0.15), Effect(Scope.my_team, Ability.str, 0.10)])
@@ -84,10 +85,16 @@ my_adv_cards = MyCards([
                          ),
                ]),
     Adventurer("聖誕千草", 2011 + 748, 0, 0, 0, 0, tags=[Damage.phy, Damage.ice, Scope.foe, Scope.foes],
-               skills=[Skill(buffs=[Effect(Scope.my_self, Ability.energy_bar, 1, 5)]),
+               skills=[Skill(buffs=[Effect(Scope.my_self, Ability.energy_bar, 1, 5),
+                                    Effect(Scope.my_self, Ability.agi, 0.75, 5), 
+                                    Effect(Scope.my_self, Ability.dex, 0.75, 5)]),
                        Skill(Scope.foes, Power.super, Damage.ice, Attack.phy, temp_boost=True,
                              adj_buffs=[Effect(Scope.my_self, AdjBuff.clear_debuff, 0, 0)]),
-                       Skill(Scope.foe, Power.high, Damage.ice, Attack.phy),
+                       Skill(Scope.foe, Power.high, Damage.ice, Attack.phy, 
+                             boost_by_buff=[Effect(Scope.my_self, Ability.dex, 0.25)]),
+                       Skill(Scope.foes, Power.ultra, Damage.ice, Attack.phy, 
+                             boost_by_buff=[Effect(Scope.my_self, Ability.dex, 0.25), 
+                                            Effect(Scope.my_self, Ability.agi, 0.25)]),
                        ]
                ),
     Adventurer("米卡莎", 1928 + 637, 0, 0, 0, 0, tags=[Damage.phy, Damage.dark, Scope.foe],
@@ -183,9 +190,9 @@ boss_ass = Assist("buff", 0, 0, 0, 0, 0,
                   skill=Skill(buffs=[Effect(Scope.my_self, Endurance.ice, 0.1)]))
 enemy_team =  Team(4, [boss_1], [boss_ass])
 
-advs = [my_adv_cards.get_card_by_name("新裝艾斯")                   .set_predefined_steps([1, 2, 2, 2, 4, 2, 2, 2, 4]),
+advs = [my_adv_cards.get_card_by_name("新裝艾斯")                   .set_predefined_steps([1, 2, 2, 2, 2, 2, 2, 2, 4]),
         my_adv_cards.get_card_by_name("英雄阿爾戈")                 .set_predefined_steps([1, 2, 2, 2, 2, 2, 2, 2, 2]),
-        my_adv_cards.get_card_by_name("聖誕千草")                   .set_predefined_steps([1, 2, 2, 2, 2, 2, 2, 2, 2]),
+        my_adv_cards.get_card_by_name("聖誕千草")                   .set_predefined_steps([1, 3, 3, 3, 3, 2, 2, 2, 2]),
         my_adv_cards.get_card_by_name("米卡莎").set_one_shot()      .set_predefined_steps([1]),
         my_adv_cards.get_card_by_name("劇場莉莉").set_one_shot()    .set_predefined_steps([1,1]),
         my_adv_cards.get_card_by_name("春姬")                       .set_predefined_steps([1, 2, 2, 2, 2, 2, 2, 2, 2]),
