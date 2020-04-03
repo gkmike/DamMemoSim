@@ -226,8 +226,8 @@ class Adventurer(Character):
         self.passive_skill = None  # TODO
         self.predefined_steps = None
         self.steps_record = []
-        self.stages_dmg_record = []
-        self.stages_effect_record = []
+        self.turns_dmg_record = []
+        self.turns_effect_record = []
         self.total_dmg = 0
         self.is_one_shot = False
         self.is_dead = False
@@ -329,7 +329,7 @@ class Adventurer(Character):
                            * (1 - attr_end - atk_end)
                            * (1 - foes_end)
                            )
-        self.stages_dmg_record.append(dmg)
+        self.turns_dmg_record.append(dmg)
         self.total_dmg += dmg
 
         for buff in s.buffs:
@@ -496,7 +496,7 @@ class Adventurer(Character):
             if ass_debuff > 0:
                 all_ass_debuff.append([eff, ass_debuff])
 
-        self.stages_effect_record.append([all_buff, all_debuff, all_ass_buff, all_ass_debuff])
+        self.turns_effect_record.append([all_buff, all_debuff, all_ass_buff, all_ass_debuff])
 
 
 class Assist(Character):
@@ -570,25 +570,17 @@ class Team:
         print(f"剩餘氣條: {self.energy_bar/15:.2f}")
 
     def show_result(self):
-        for i, m in enumerate(self.members):
-            print(f"{i + 1}:")
-            ass_name = ""
-            if m.assist:
-                ass_name = f"+ {m.assist.name}"
-            if self.total_dmg == 0:
-                self.total_dmg = 1
-            print(f"    {m.name} {ass_name} : {int(m.total_dmg):,} ({m.total_dmg / self.total_dmg * 100:,.0f}%)")
-            print(f"    招式順序: {m.steps_record}")
-        print(f"\n總傷害:{int(self.total_dmg):,}")
         print("=" * 60)
         for m in self.members:
             print(f"{m.name} 回合詳細")
-            for n_stage, info in enumerate(m.stages_effect_record):
-                print(f"  Turn {n_stage + 1}:")
+            for turn, info in enumerate(m.turns_effect_record):
+                print(f"  Turn {turn + 1}:")
                 buffs = info[0]
                 debuffs = info[1]
                 ass_buffs = info[2]
                 ass_debuffs = info[3]
+                if turn < len(m.steps_record):
+                    print(f"    Skill:        [{m.steps_record[turn]}] => Damage {int(m.turns_dmg_record[turn])}")
                 print(f"    Buff:         {buffs}")
                 print(f"    DeBuff:       {debuffs}")
                 print(f"    AssistBuff:   {ass_buffs}")
@@ -713,11 +705,14 @@ class Ranker:
         self.all_battles = []
     def add(self, battle):
         self.all_battles.append(copy.deepcopy(battle))
-    def report(self):
+    def report(self, **kwargs):
+        show_detail = kwargs.get("detail", False)
         battle_result = sorted(self.all_battles, key=lambda team: team.player_team.total_dmg)
         top_dmg = int(battle_result[0].player_team.total_dmg)
 
         for idx, b in enumerate(battle_result):
             print(f"傷害: {int(b.player_team.total_dmg):,} (rank {idx+1} {b.player_team.total_dmg / top_dmg * 100:,.0f}%)")
             b.player_team.show_berif()
+            if show_detail:
+                b.player_team.show_result()
         print("="*60)

@@ -196,7 +196,8 @@ asses = [my_ass_cards.get_card_by_name("劇場乳神"),
          my_ass_cards.get_card_by_name("泳裝芙蕾雅"),
          my_ass_cards.get_card_by_name("製作人荷米斯"),
          my_ass_cards.get_card_by_name("聖爐乳神"),
-         my_ass_cards.get_card_by_name("泳裝埃伊娜")]
+         my_ass_cards.get_card_by_name("泳裝埃伊娜")
+         ]
 
 my_team = Team(4, advs, asses)
 
@@ -206,4 +207,4 @@ battle.run()
 
 
 ranker.add(battle)
-ranker.report()
+ranker.report(detail=True)
