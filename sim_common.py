@@ -593,6 +593,14 @@ class Team:
         self.total_dmg = 0
         self.energy_bar = 0
 
+    def __eq__(self, cmp_team):
+        for m1, m2, in zip(self.members, cmp_team.members):
+            if m1.name != m2.name:
+                return False
+            if m1.assist.name != m2.assist.name:
+                return False
+        return True
+
     def select_skills(self):
         for m in self.members_on_stage:
             sv = self.max_special_moves()
@@ -760,15 +768,20 @@ class MyCards:
 class Ranker:
     def __init__(self):
         self.all_battles = []
-    def add(self, battle):
-        self.all_battles.append(copy.deepcopy(battle))
+    def add(self, battle_to_add):
+        for bt in self.all_battles:
+            if bt.player_team == battle_to_add.player_team:
+                print("team was already added")
+                return 
+        self.all_battles.append(copy.deepcopy(battle_to_add))
     def report(self, **kwargs):
         show_detail = kwargs.get("detail", False)
-        battle_result = sorted(self.all_battles, key=lambda team: team.player_team.total_dmg)
+        battle_result = sorted(self.all_battles, key=lambda team: team.player_team.total_dmg, reverse=True)
         top_dmg = int(battle_result[0].player_team.total_dmg)
 
         for idx, b in enumerate(battle_result):
-            print(f"總傷害: {int(b.player_team.total_dmg):,} (rank {idx+1} {b.player_team.total_dmg / top_dmg * 100:,.0f}%)")
+            print("--")
+            print(f"總傷害: {int(b.player_team.total_dmg):,} [rank {idx+1}] ({b.player_team.total_dmg / top_dmg * 100:,.0f}% of rank1)")
             b.player_team.show_berif()
             if show_detail:
                 b.player_team.show_result()

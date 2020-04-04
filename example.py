@@ -246,5 +246,30 @@ battle.run()
 
 
 ranker.add(battle)
-ranker.report(detail=True)
+
+advs = [my_adv_cards.get_card_by_name("新裝艾斯")                   .set_predefined_steps([1, 2, 2, 2, 2, 2, 2, 2, 4]),
+        my_adv_cards.get_card_by_name("英雄阿爾戈")                 .set_predefined_steps([1, 2, 2, 2, 2, 2, 2, 2, 2]),
+        my_adv_cards.get_card_by_name("聖誕千草")                   .set_predefined_steps([1, 3, 3, 3, 3, 2, 2, 2, 2]),
+        my_adv_cards.get_card_by_name("米卡莎").set_one_shot()      .set_predefined_steps([1]),
+        my_adv_cards.get_card_by_name("劇場莉莉").set_one_shot()    .set_predefined_steps([0, 1]),
+        my_adv_cards.get_card_by_name("春姬")                       .set_predefined_steps([0, 0, 3, 3, 3, 3, 3, 2, 2]),
+        ]
+
+asses = [my_ass_cards.get_card_by_name("月神"),
+         my_ass_cards.get_card_by_name("劇場乳神"),
+         my_ass_cards.get_card_by_name("泳裝芙蕾雅"),
+         my_ass_cards.get_card_by_name("製作人荷米斯"),
+         my_ass_cards.get_card_by_name("聖爐乳神"),
+         my_ass_cards.get_card_by_name("泳裝埃伊娜")
+         ]
+
+my_team = Team(4, advs, asses)
+
+battle = BattleStage(9)
+battle.set_player_team(my_team).set_enemy_team(enemy_team)
+battle.run()
+
+
+ranker.add(battle)
+ranker.report()
 #ranker.report()
