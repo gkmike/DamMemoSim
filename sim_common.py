@@ -222,6 +222,7 @@ class Adventurer(Character):
         self.weak_killer = kwargs.get("weak_killer", None)
         self.passive_skills = kwargs.get("passive_skills", None)
         self.predefined_steps = None
+        self.predefined_targets = None
         self.steps_record = {}
         self.hp_mp_record = {}
         self.turns_dmg_record = {}
@@ -256,14 +257,16 @@ class Adventurer(Character):
         self.my_team = None
         self.battle_stage = None
         self.selected_skill = None
+        self.selected_enemy = None
 
 
     def set_one_shot(self):
         self.is_one_shot = True
         return self
 
-    def set_predefined_steps(self, steps):
+    def set_predefined_steps(self, steps, targets=None):
         self.predefined_steps = steps
+        self.predefined_targets = targets
         return self
 
     def set_assist(self, assist):
@@ -281,13 +284,27 @@ class Adventurer(Character):
         if self.is_one_shot is False:
             if len(self.predefined_steps) < self.battle_stage.max_turns:
                 raise Exception("{self.name}  預排技能順序數量不足回合數")
-        skill_idx = self.predefined_steps[self.battle_stage.cur_turn - 1]
+        turn_idx = self.get_cur_turn() - 1
+        skill_idx = self.predefined_steps[turn_idx]
         if skill_idx == 0:
-            raise Exception(f"{self.name} 必須發動技能 @Turn {self.my_team.battle_stage.cur_turn}")
+            raise Exception(f"{self.name} 必須發動技能 @Turn {turn_idx}")
         self.selected_skill = self.skills[skill_idx - 1]
         mp_cost = self.selected_skill.mp_cost
         if mp_cost > self.cur_mp:
-            raise Exception(f"{self.name}  MP不足 @Turn {self.my_team.battle_stage.cur_turn}")
+            raise Exception(f"{self.name}  MP不足 @Turn {turn_idx}")
+        if self.predefined_targets:
+            self.selected_enemy = self.predefined_targets[turn_idx]
+            if self.selected_skill.scope == Scope.foe:
+                if self.selected_enemy > len(self.my_team.opponent_team.members_on_stage):
+                    raise Exception(f"{self.name}  指定超出敵人數量 @Turn {turn_idx}")
+                if self.selected_enemy == 0:
+                    raise Exception(f"{self.name}  單體攻擊技能指定對象不可為0 @Turn {turn_idx}")
+                self.selected_enemy -= 1
+            else:
+                if self.selected_enemy != 0:
+                    raise Exception(f"{self.name}  非單體攻擊技能指定對象必需為0 @Turn {turn_idx}")
+        else:
+            self.selected_enemy = 0
         return
 
     def get_cur_turn(self):
@@ -301,7 +318,7 @@ class Adventurer(Character):
         self.hp_mp_record[cur_turn] = [self.cur_hp, self.cur_mp]
         dmg = 0
         foes_on_stage = self.my_team.opponent_team.members_on_stage
-        foe_on_stage = foes_on_stage[0]
+        foe_on_stage = foes_on_stage[self.selected_enemy]
         if s.power is not None:
             if s.attack == Attack.phy:
                 if self.assist:
@@ -666,7 +683,7 @@ class Team:
             m.select_skill(has_sv)
             if m.selected_skill.is_special:
                 if self.dec_energy_bar() == False:
-                    raise Exception(f"{m.name} 必殺技條未滿，無法施放必殺技 @Turn {self.battle_stage.cur_turn}")
+                    raise Exception(f"{m.name} 必殺技條未滿，無法施放必殺技 @Turn {self.get_cur_turn()}")
 
     def act(self):
         all_dmg = 0
