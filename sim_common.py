@@ -220,7 +220,7 @@ class Adventurer(Character):
         # self.skills = [s for s in self.skills if s is not None]
         self.killer = kwargs.get("killer", None)
         self.weak_killer = kwargs.get("weak_killer", None)
-        self.passive_skill = kwargs.get("passive_skills", None)
+        self.passive_skills = kwargs.get("passive_skills", None)
         self.predefined_steps = None
         self.steps_record = {}
         self.hp_mp_record = {}
@@ -234,6 +234,8 @@ class Adventurer(Character):
         self.debuff_need_check = set()
         self.ass_buff_need_check = set()
         self.ass_debuff_need_check = set()
+        self.passive_buff_need_check = set()
+        self.passive_debuff_need_check = set()
 
         self.got_buff = dict()
         self.got_debuff = dict()
@@ -302,11 +304,17 @@ class Adventurer(Character):
         foe_on_stage = foes_on_stage[0]
         if s.power is not None:
             if s.attack == Attack.phy:
-                atk = self.str + self.assist.str
+                if self.assist:
+                    atk = self.str + self.assist.str
+                else:
+                    atk = self.str
                 abl_up = self.calc_total_buff(Ability.str)
                 enum_atk_end = Damage.phy
             elif s.attack == Attack.mag:
-                atk = self.mag + self.assist.mag
+                if self.assist:
+                    atk = self.mag + self.assist.mag
+                else:
+                    atk = self.mag
                 abl_up = self.calc_total_buff(Ability.mag)
                 enum_atk_end = Damage.mag
             else:
@@ -477,6 +485,14 @@ class Adventurer(Character):
         self.ass_debuff_need_check.add(effect.effect_enum)
         self.set_effect(self.assist_debuff, effect)
 
+    def set_passive_buff(self, effect):
+        self.passive_buff_need_check.add(effect.effect_enum)
+        self.set_effect(self.passive_buff, effect)
+
+    def set_passive_debuff(self, effect):
+        self.passive_debuff_need_check.add(effect.effect_enum)
+        self.set_effect(self.passive_debuff, effect)
+
     def adj_buff(self, adj):
         kind = adj.effect_enum
         val = adj.value
@@ -529,6 +545,13 @@ class Adventurer(Character):
         all_debuff = []
         all_ass_buff = []
         all_ass_debuff = []
+        all_p_buff = []
+        all_p_debuff = []
+
+        for eff in list(self.passive_buff_need_check):
+            passive_buff = self.passive_buff[eff]
+            if passive_buff > 0:
+                all_p_buff.append([eff, passive_buff])
 
         for eff in list(self.ass_buff_need_check):
             ass_buff = self.assist_buff[eff]
@@ -556,8 +579,33 @@ class Adventurer(Character):
             if ass_debuff > 0:
                 all_ass_debuff.append([eff, ass_debuff])
 
+        for eff in list(self.passive_debuff_need_check):
+            passive_debuff = self.passive_debuff[eff]
+            if passive_debuff > 0:
+                all_p_debuff.append([eff, passive_debuff])
+
         cur_turn = self.get_cur_turn()
-        self.turns_effect_record[cur_turn] = [all_buff, all_debuff, all_ass_buff, all_ass_debuff]
+        self.turns_effect_record[cur_turn] = [all_buff, all_debuff, all_ass_buff, all_ass_debuff, all_p_buff, all_p_debuff]
+
+    def init_passive_skills(self):
+        if self.passive_skills:
+            for s in self.passive_skills:
+                if s.buffs:
+                    for eff in s.buffs:
+                        if eff.scope == Scope.my_team:
+                            raise ValueError
+                        elif eff.scope == Scope.my_self:
+                            self.set_passive_buff(eff)
+                        else:
+                            raise ValueError
+                if s.debuffs:
+                    for eff in s.debuffs:
+                        if eff.scope == Scope.my_team:
+                            raise ValueError
+                        elif eff.scope == Scope.my_self:
+                            self.set_passive_debuff(eff)
+                        else:
+                            raise ValueError
 
 
 class Assist(Character):
@@ -649,14 +697,18 @@ class Team:
                     debuffs = info[1]
                     ass_buffs = info[2]
                     ass_debuffs = info[3]
+                    passive_buffs = info[4]
+                    passive_debuffs = info[5]
                     print(f"  Turn {turn + 1}:")
-                    print(f"    HP:           {m.hp_mp_record[turn][0]}")
-                    print(f"    MP:           {m.hp_mp_record[turn][1]}")
-                    print(f"    Skill:        [{m.steps_record[turn]}] => Damage {int(m.turns_dmg_record[turn])}")
-                    print(f"    Buff:         {buffs}")
-                    print(f"    DeBuff:       {debuffs}")
-                    print(f"    AssistBuff:   {ass_buffs}")
-                    print(f"    AssistDeBuff: {ass_debuffs}")
+                    print(f"    HP:            {m.hp_mp_record[turn][0]}")
+                    print(f"    MP:            {m.hp_mp_record[turn][1]}")
+                    print(f"    Skill:         [{m.steps_record[turn]}] => Damage {int(m.turns_dmg_record[turn])}")
+                    print(f"    Buff:          {buffs}")
+                    print(f"    DeBuff:        {debuffs}")
+                    print(f"    AssistBuff:    {ass_buffs}")
+                    print(f"    AssistDeBuff:  {ass_debuffs}")
+                    print(f"    PassiveBuff:   {passive_buffs}")
+                    print(f"    PassiveDeBuff: {passive_debuffs}")
 
             print("*" * 60)
 
@@ -669,6 +721,7 @@ class Team:
                 self.members_on_stage[idx] = adv
         self.members_on_stage = [m for m in self.members_on_stage if m is not None]
         if adv:
+            adv.init_passive_skills()
             adv.assist.act()
 
     def next_turn(self):
@@ -700,6 +753,7 @@ class Team:
                 adv.set_assist(ass)
                 ass.my_team = self
         for m in self.members_on_stage:
+            m.init_passive_skills()
             if m.assist:
                 m.assist.act()
 
@@ -738,7 +792,9 @@ class BattleStage:
             # print(f"round {i}")
             self.cur_turn = turn
             self.player_team.select_skills()
+            self.enemy_team.select_skills()
             self.player_team.act()
+            self.enemy_team.act()
             self.player_team.next_turn()
             self.enemy_team.next_turn()
 
@@ -801,4 +857,5 @@ class Ranker:
             b.player_team.show_berif()
             if show_detail:
                 b.player_team.show_result()
+                b.enemy_team.show_result()
         print("="*60)
