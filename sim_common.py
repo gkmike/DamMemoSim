@@ -774,12 +774,21 @@ class Ranker:
                 print("team was already added")
                 return 
         self.all_battles.append(copy.deepcopy(battle_to_add))
+        self.all_battles = sorted(self.all_battles, key=lambda team: team.player_team.total_dmg, reverse=True)
     def report(self, **kwargs):
+        limit = kwargs.get("limit", 1)
+        rank = kwargs.get("rank", None)
         show_detail = kwargs.get("detail", False)
-        battle_result = sorted(self.all_battles, key=lambda team: team.player_team.total_dmg, reverse=True)
-        top_dmg = int(battle_result[0].player_team.total_dmg)
+        
+        top_dmg = int(self.all_battles[0].player_team.total_dmg)
 
-        for idx, b in enumerate(battle_result):
+        for idx, b in enumerate(self.all_battles):
+            if rank:
+                if idx + 1 != rank:
+                    continue
+            else:
+                if idx >= limit:
+                    return 
             print("--")
             print(f"總傷害: {int(b.player_team.total_dmg):,} [rank {idx+1}] ({b.player_team.total_dmg / top_dmg * 100:,.0f}% of rank1)")
             b.player_team.show_berif()
