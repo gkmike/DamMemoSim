@@ -117,7 +117,9 @@ my_adv_cards = MyCards([
                        Skill(Scope.foes, Power.ultra, Damage.ice, Attack.phy, 
                              boost_by_buff=[Effect(Scope.my_self, Ability.dex, 0.25), 
                                             Effect(Scope.my_self, Ability.agi, 0.25)]),
-                       ]
+                       ],
+                killer=Killer.worm,
+                passive_skill=[Skill(buffs=[Effect(Scope.my_self, Endurance.fire, 0.35)])],
                ),
     Adventurer("米卡莎", 4143+1475, 312+130,
                 1928 + 637, 0, 0, 0, 0, tags=[Damage.phy, Damage.dark, Scope.foe],
@@ -211,7 +213,7 @@ my_adv_cards = MyCards([
 boss_cards = MyCards([
     Adventurer("九魔姬", 999999999999, 0,
                 0, 100, 0, 0, 1000,
-               skills=[Skill(Scope.foes, Power.high, Damage.dark, Attack.mag)]
+               skills=[Skill(Scope.foes, Power.high, Damage.dark, Attack.mag)],
                )
 ])
 
@@ -271,5 +273,5 @@ battle.run()
 
 
 ranker.add(battle)
-ranker.report(limit=1, detail=True)
+ranker.report(limit=1, detail=False)
 #ranker.report()

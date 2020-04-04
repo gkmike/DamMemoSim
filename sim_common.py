@@ -216,10 +216,11 @@ class Adventurer(Character):
         self.max_mp = 0
         self.cur_hp = 0
         self.cur_mp = 0
-        self.killer = None  # TODO
         self.skills = kwargs.get("skills", None)
         # self.skills = [s for s in self.skills if s is not None]
-        self.passive_skill = None  # TODO
+        self.killer = kwargs.get("killer", None)
+        self.weak_killer = kwargs.get("weak_killer", None)
+        self.passive_skill = kwargs.get("passive_skills", None)
         self.predefined_steps = None
         self.steps_record = {}
         self.hp_mp_record = {}
@@ -324,12 +325,15 @@ class Adventurer(Character):
 
             if s.scope == Scope.foe:
                 f = foe_on_stage
+                killer_up = 0
+                if f.weak_killer == self.killer:
+                    killer_up = 0.5
                 foe_end = f.calc_total_buff(Endurance.foe)
                 attr_end = f.calc_total_buff(s.attr_end_ref)
                 atk_end = f.calc_total_buff(enum_atk_end)
                 end_up = f.calc_total_buff(Ability.end)
                 end = f.end
-                dmg = ((atk * (1 + abl_up) * (1 + s.coeff_tmp_boost) - end * (1 + end_up))
+                dmg = ((atk * (1 + abl_up) * (1 + killer_up) * (1 + s.coeff_tmp_boost) - end * (1 + end_up))
                        * s.coeff
                        * (1 + total_boost_by)
                        * (1 + attr_dmg_up)
@@ -338,12 +342,15 @@ class Adventurer(Character):
                        )
             else:
                 for f in foes_on_stage:
+                    killer_up = 0
+                    if f.weak_killer == self.killer:
+                        killer_up = 0.5
                     foes_end = f.calc_total_buff(Endurance.foes)
                     attr_end = f.calc_total_buff(s.attr_end_ref)
                     atk_end = f.calc_total_buff(enum_atk_end)
                     end_up = f.calc_total_buff(Ability.end)
                     end = f.end
-                    dmg = ((atk * (1 + abl_up) * (1 + s.coeff_tmp_boost) - end * (1 + end_up))
+                    dmg += ((atk * (1 + abl_up) * (1 + killer_up) * (1 + s.coeff_tmp_boost) - end * (1 + end_up))
                            * s.coeff
                            * (1 + total_boost_by)
                            * (1 + attr_dmg_up)
@@ -628,7 +635,7 @@ class Team:
             if m.is_one_shot:
                 print(f"  {m.name} + {m.assist.name} (屍體)")
             else:
-                print(f"  {m.name} + {m.assist.name} = {int(m.total_dmg)} ({m.total_dmg / self.total_dmg * 100:,.0f}%)")
+                print(f"  {m.name} + {m.assist.name} = {int(m.total_dmg):,} ({m.total_dmg / self.total_dmg * 100:,.0f}%)")
         print(f"剩餘氣條: {self.energy_bar/15:.2f}")
 
     def show_result(self):
@@ -711,11 +718,11 @@ class BattleStage:
             return False
 
     def set_player_team(self, team):
-        self.player_team = team
+        self.player_team = copy.deepcopy(team)
         return self
 
     def set_enemy_team(self, team):
-        self.enemy_team = team
+        self.enemy_team = copy.deepcopy(team)
         return self
 
     def run(self):
