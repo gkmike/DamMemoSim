@@ -211,27 +211,34 @@ my_adv_cards = MyCards([
 ])
 
 boss_cards = MyCards([
-    Adventurer("九魔姬", 999999999999, 0,
+    Adventurer("九魔姬", 100000000, 0,
                 0, 100, 0, 0, 1000,
                skills=[Skill(Scope.foes, Power.high, Damage.dark, Attack.mag)],
                passive_skills=[Skill(buffs=[Effect(Scope.my_self, Endurance.fire, 0.1)])]
                ),
-    Adventurer("", 999999999999, 0,
-                0, 100, 0, 0, 1000,
-               skills=[Skill(Scope.foes, Power.high, Damage.dark, Attack.mag)],
+    Adventurer("骷髏-小", 100000000, 0,
+                100, 150, 0, 0, 0,
+               skills=[Skill(Scope.foes, Power.high, Damage.dark, Attack.phy)],
                passive_skills=[Skill(buffs=[Effect(Scope.my_self, Endurance.fire, 0.1)])]
-               )
+               ),
+    Adventurer("骷髏-大", 100000000, 0,
+                100, 150, 0, 0, 0,
+               skills=[Skill(Scope.foes, Power.high, Damage.dark, Attack.phy)],
+               passive_skills=[Skill(buffs=[Effect(Scope.my_self, Endurance.fire, 0.1)])]
+               ),
 ])
 
 ranker = Ranker()
 
-boss_1 = boss_cards.get_card_by_name("九魔姬").set_predefined_steps([1, 1, 1, 1, 1, 1, 1, 1, 1])
-enemy_team =  Team(1, [boss_1])
+boss = [boss_cards.get_card_by_name("骷髏-小").set_predefined_steps([1, 1, 1, 1, 1, 1, 1, 1, 1]),
+        boss_cards.get_card_by_name("骷髏-小").set_predefined_steps([1, 1, 1, 1, 1, 1, 1, 1, 1]),
+        boss_cards.get_card_by_name("骷髏-大").set_predefined_steps([1, 1, 1, 1, 1, 1, 1, 1, 1]),
+        ]
+enemy_team =  Team(3, boss)
 
 advs = [my_adv_cards.get_card_by_name("新裝艾斯")                   .set_predefined_steps([1, 2, 2, 2, 2, 2, 2, 2, 4]),
         my_adv_cards.get_card_by_name("英雄阿爾戈")                 .set_predefined_steps([1, 2, 2, 2, 2, 2, 2, 2, 2]),
-        my_adv_cards.get_card_by_name("聖誕千草")                   .set_predefined_steps([1, 3, 3, 3, 3, 2, 2, 2, 2],
-                                                                                          [0, 2, 1, 1, 1, 0, 0, 0, 0]),
+        my_adv_cards.get_card_by_name("聖誕千草")                   .set_predefined_steps([1, 3, 3, 3, 3, 2, 2, 2, 2]),
         my_adv_cards.get_card_by_name("米卡莎").set_one_shot()      .set_predefined_steps([1]),
         my_adv_cards.get_card_by_name("劇場莉莉").set_one_shot()    .set_predefined_steps([0, 1]),
         my_adv_cards.get_card_by_name("春姬")                       .set_predefined_steps([0, 0, 3, 3, 3, 3, 3, 2, 2]),
@@ -278,5 +285,6 @@ battle.run()
 
 
 ranker.add(battle)
-ranker.report(limit=1, detail=False)
+# ranker.report(limit=1, detail=False)
+ranker.report(limit=1, detail=True)
 #ranker.report()

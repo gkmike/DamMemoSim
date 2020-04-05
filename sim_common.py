@@ -128,6 +128,10 @@ class Killer:
     undead = "Killer.undead"
 
 
+class EndEvent(Exception):
+    pass
+
+
 all_effect_enum = []
 for multi_effect_enum in [Ability.get_enums(), Damage.get_enums(), Endurance.get_enums()]:
     for one_effect_enum in multi_effect_enum:
@@ -272,10 +276,6 @@ class Adventurer(Character):
     def set_assist(self, assist):
         self.assist = assist
         assist.my_adv = self
-        self.max_hp = self.hp + assist.hp
-        self.max_mp = self.mp + assist.mp
-        self.cur_hp = self.max_hp
-        self.cur_mp = self.max_mp
 
 
     def select_skill(self, special_avail):
@@ -309,6 +309,14 @@ class Adventurer(Character):
 
     def get_cur_turn(self):
         return self.my_team.battle_stage.cur_turn
+
+    def got_dmg(self, dmg):
+        self.cur_hp -= dmg
+        if self.cur_hp <= 0:
+            self.is_dead = True
+            self.my_team.team_fill()
+            if len(self.my_team.members_on_stage):
+                raise EndEvent(self.my_team.tag + ' die')
 
     def act(self):
         s = self.selected_skill
@@ -365,6 +373,7 @@ class Adventurer(Character):
                        * (1 - attr_end - atk_end)
                        * (1 - foe_end)
                        )
+                f.got_dmg(dmg)
             else:
                 for f in foes_on_stage:
                     killer_up = 0
@@ -382,6 +391,7 @@ class Adventurer(Character):
                            * (1 - attr_end - atk_end)
                            * (1 - foes_end)
                            )
+                    f.got_dmg(dmg)
         self.turns_dmg_record[cur_turn] = dmg
         self.total_dmg += dmg
 
@@ -656,14 +666,15 @@ class Team:
     def __init__(self, max_on_stage, members, assists=None):
         self.battle_stage = None
         self.opponent_team = None
-        self.members = members
-        self.assists = assists
+        self.members = copy.deepcopy(members)
+        self.assists = copy.deepcopy(assists)
         self.members_on_stage = self.members[0: max_on_stage]
         self.members_on_reserve = self.members[max_on_stage:]
         self.hit_dmg_turns = []
         self.got_dmg_turns = []
         self.total_dmg = 0
         self.energy_bar = 0
+        self.tag = ""
 
     def __eq__(self, cmp_team):
         for m1, m2, in zip(self.members, cmp_team.members):
@@ -672,6 +683,9 @@ class Team:
             if m1.assist.name != m2.assist.name:
                 return False
         return True
+
+    def get_cur_turn(self):
+        return self.battle_stage.cur_turn
 
     def select_skills(self):
         for m in self.members_on_stage:
@@ -698,16 +712,16 @@ class Team:
     def show_berif(self):
         for i, m in enumerate(self.members):
             if m.is_one_shot:
-                print(f"  {m.name} + {m.assist.name} (屍體)")
+                print(f"  {m.name} + {m.assist.name} (屍體), 出招={list(m.steps_record.values())}")
             else:
-                print(f"  {m.name} + {m.assist.name} = {int(m.total_dmg):,} ({m.total_dmg / self.total_dmg * 100:,.0f}%)")
+                print(f"  {m.name} + {m.assist.name} = {int(m.total_dmg):,} ({m.total_dmg / self.total_dmg * 100:,.0f}%), 出招={list(m.steps_record.values())}")
         print(f"剩餘氣條: {self.energy_bar/15:.2f}")
 
     def show_result(self):
         print("=" * 60)
         for m in self.members:
             print(f"{m.name} 回合詳細")
-            for turn in range(1, self.battle_stage.max_turns+1):
+            for turn in range(1, self.battle_stage.end_turn):
                 if turn in m.steps_record:
                     info = m.turns_effect_record[turn]
                     buffs = info[0] 
@@ -730,20 +744,25 @@ class Team:
             print("*" * 60)
 
     def team_fill(self):
-        adv = None
+        advs = []
         for idx, m in enumerate(self.members_on_stage):
-            if m.is_one_shot or m.is_dead:
+            if m.is_dead:
                 if len(self.members_on_reserve) > 0:
                     adv = self.members_on_reserve.pop(0)
-                self.members_on_stage[idx] = adv
+                    self.members_on_stage[idx] = adv
+                    advs.append(adv)
+                else:
+                    self.members_on_stage[idx] = None
         self.members_on_stage = [m for m in self.members_on_stage if m is not None]
-        if adv:
+        for adv in advs:
             adv.init_passive_skills()
             adv.assist.act()
 
     def next_turn(self):
         for m in self.members_on_stage:
             m.next_turn()
+            if m.is_one_shot:
+                m.is_dead = True
         self.team_fill()
 
     def inc_energy_bar(self, num):
@@ -755,6 +774,7 @@ class Team:
         return int(self.energy_bar / 15)
 
     def dec_energy_bar(self):
+        print(self.energy_bar)
         self.energy_bar -= 15
         if self.energy_bar < 0:
             return False
@@ -769,6 +789,17 @@ class Team:
             for adv, ass in zip(self.members, self.assists):
                 adv.set_assist(ass)
                 ass.my_team = self
+                adv.max_hp = adv.hp + ass.hp
+                adv.max_mp = adv.mp + ass.mp
+                adv.cur_hp = adv.max_hp
+                adv.cur_mp = adv.max_mp
+        else:
+            for adv in self.members:
+                adv.max_hp = adv.hp
+                adv.max_mp = adv.mp
+                adv.cur_hp = adv.max_hp
+                adv.cur_mp = adv.max_mp
+
         for m in self.members_on_stage:
             m.init_passive_skills()
             if m.assist:
@@ -778,9 +809,11 @@ class Team:
 class BattleStage:
     def __init__(self, max_turns):
         self.max_turns = max_turns
+        self.end_turn = 1
         self.cur_turn = 1
         self.player_team = None
         self.enemy_team = None
+        self.ending = None
 
     def is_last_turn(self):
         if self.cur_turn >= self.max_turns:
@@ -790,13 +823,21 @@ class BattleStage:
 
     def set_player_team(self, team):
         self.player_team = copy.deepcopy(team)
+        self.player_team.tag = "player"
         return self
 
     def set_enemy_team(self, team):
         self.enemy_team = copy.deepcopy(team)
+        self.player_team.tag = "enemy"
         return self
 
     def run(self):
+        try:
+            self.try_run()
+        except EndEvent as e:
+            self.ending = e
+
+    def try_run(self):
         self.player_team.opponent_team = self.enemy_team
         self.enemy_team.opponent_team = self.player_team
         self.player_team.init(self)
@@ -805,9 +846,14 @@ class BattleStage:
             for idx, s in enumerate(p.skills):
                 if s:
                     s.idx = idx + 1
+        for p in self.enemy_team.members:
+            for idx, s in enumerate(p.skills):
+                if s:
+                    s.idx = idx + 1
         for turn in range(1, self.max_turns+1):
             # print(f"round {i}")
             self.cur_turn = turn
+            self.end_turn = turn
             self.player_team.select_skills()
             self.enemy_team.select_skills()
             self.player_team.act()
@@ -820,18 +866,16 @@ class MyCards:
     def __init__(self, cards_list_in=()):
         self.card_list = list(cards_list_in)
 
-    def get_card_by_name(self, name, **kwargs):
-        is_one_shot = kwargs.get("is_one_shot", False)
+    def get_card_by_name(self, name):
         ret = None
         for card in self.card_list:
             if card.name == name:
                 if ret is not None:
-                    raise ValueError
-                card.is_one_shot = is_one_shot
+                    raise ValueError("找不到卡片")
                 ret = card
         if ret is None:
-            raise ValueError
-        return ret
+            raise ValueError("找到重複名稱卡片")
+        return copy.deepcopy(ret)
 
     def select_tag(self, tag, reverse=False):
         if reverse:
