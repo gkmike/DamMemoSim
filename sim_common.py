@@ -357,24 +357,18 @@ class Adventurer(Character):
         if self.cur_hp <= 0:
             self.is_dead = True
             self.my_team.team_fill()
-            if len(self.my_team.members_on_stage):
+            if len(self.my_team.members_on_stage) == 0:
                 raise EndEvent(self.my_team.tag + ' die')
 
     def calc_dmg(self, skill, target):
         f = target
         s = skill
         if s.attack == Attack.phy:
-            if self.assist:
-                atk = self.str + self.assist.str
-            else:
-                atk = self.str
+            atk = self.calc_total_abi(Ability.str)
             abl_up = self.calc_total_buff(Ability.str)
             enum_atk_end = Damage.phy
         elif s.attack == Attack.mag:
-            if self.assist:
-                atk = self.mag + self.assist.mag
-            else:
-                atk = self.mag
+            atk = self.calc_total_abi(Ability.mag)
             abl_up = self.calc_total_buff(Ability.mag)
             enum_atk_end = Damage.mag
         else:
@@ -415,7 +409,7 @@ class Adventurer(Character):
         crit_dmg = self.count_crit_rate() * 0.5
         pene_def_down = 1 - (self.count_pene_rate() * 0.5)
         guard_atk_down = 1 - (self.count_guard_rate() * 0.5)
-        end = f.end + f.armor_def
+        end = f.calc_total_abi(Ability.end) + f.armor_def
         dmg = ((atk * (1 + abl_up) * (1 + killer_up) * (1 + s.coeff_tmp_boost) - end * (1 + end_up) * pene_def_down / 2)
                * s.coeff
                * (1 + total_boost_by)
@@ -519,12 +513,17 @@ class Adventurer(Character):
 
         return dmg
 
-    def count_rate(self, rate_eff, abi_eff1, abi_eff2):
-        v1 = get_abi_by_eff(self, abi_eff1)
-        v2 = get_abi_by_eff(self, abi_eff2)
+    def calc_total_abi(self, abi_eff):
         if self.assist:
-            v1 += get_abi_by_eff(self.assist, abi_eff1)
-            v2 += get_abi_by_eff(self.assist, abi_eff2)
+            ass_val = get_abi_by_eff(self.assist, abi_eff)
+        else:
+            ass_val = 0
+        val = get_abi_by_eff(self, abi_eff)
+        return val + ass_val
+
+    def count_rate(self, rate_eff, abi_eff1, abi_eff2):
+        v1 = self.calc_total_abi(abi_eff1)
+        v2 = self.calc_total_abi(abi_eff2)
         v1 *= (1 + self.sum_eff_value(abi_eff1))
         v2 *= (1 + self.sum_eff_value(abi_eff2))
 
@@ -835,9 +834,12 @@ class Team:
             team_total_dmg = 1
         for i, m in enumerate(self.members):
             if m.is_one_shot:
-                print(f"  {m.name} + {m.assist.name} (屍體)")
+                print(f"  {m.name} + {m.assist.name} (撤退)")
             else:
-                print(f"  {m.name} + {m.assist.name} => {int(m.total_dmg):,} ({m.total_dmg / team_total_dmg * 100:.0f}%) = " +
+                dead_text = ""
+                if m.is_dead:
+                    dead_text = " (死亡) "
+                print(f"  {m.name} + {m.assist.name}{dead_text}=> {int(m.total_dmg):,} ({m.total_dmg / team_total_dmg * 100:.0f}%) = " +
                       f"技能傷害 {int(m.total_skill_dmg)} ({m.total_skill_dmg / team_total_dmg * 100:.0f}%) + " + 
                       f"反擊傷害 {int(m.total_counter_dmg)} ({m.total_counter_dmg / team_total_dmg * 100:.0f}%)"
                       )
@@ -849,6 +851,11 @@ class Team:
             print(f"{m.name} 回合詳細")
             for turn in range(1, self.battle_stage.end_turn):
                 if turn in m.steps_record:
+                    print(f"  Turn {turn}:")
+                    if turn not in m.turns_effect_record:
+                        if m.is_dead:
+                            print(f"    死亡")
+                        continue
                     info = m.turns_effect_record[turn]
                     buffs = info[0] 
                     debuffs = info[1]
@@ -856,7 +863,6 @@ class Team:
                     ass_debuffs = info[3]
                     passive_buffs = info[4]
                     passive_debuffs = info[5]
-                    print(f"  Turn {turn + 1}:")
                     print(f"    HP:            {m.hp_mp_record[turn][0]}")
                     print(f"    MP:            {m.hp_mp_record[turn][1]}")
                     print(f"    Skill:         [{m.steps_record[turn]}] => Damage {int(m.turns_dmg_record[turn])}")
