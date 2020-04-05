@@ -26,10 +26,16 @@ class Ability:
     dex = "Ability.dex"
     agi = "Ability.agi"
     energy_bar = 'Ability.energy_bar'
+    crit_rate = "Ability.crit_rate"
+    pene_rate = "Ability.pene_rate"
+    counter_rate = "Ability.counter_rate"
+    guard_rate = "Ability.guard_rate"
+
 
     @classmethod
     def get_enums(cls):
-        return [cls.str, cls.mag, cls.end, cls.dex, cls.agi, cls.energy_bar]
+        return [cls.str, cls.mag, cls.end, cls.dex, cls.agi, 
+                cls.energy_bar, cls.crit_rate, cls.pene_rate, cls.counter_rate, cls.guard_rate]
 
 
 class Recover:
@@ -99,6 +105,7 @@ class Endurance:
 
 
 class Power:
+    simple = "Power.simple"
     low = "Power.low"
     mid = "Power.mid"
     high = "Power.high"
@@ -140,11 +147,33 @@ for multi_effect_enum in [Ability.get_enums(), Damage.get_enums(), Endurance.get
         all_effect_enum.append(one_effect_enum)
 
 
+def clamp(val, min_val, max_val):
+    if val < min_val:
+        val = min_va
+    elif val > max_val:
+        val = max_val
+    return val
+
+def get_abi_by_eff(chara, eff):
+    if eff == Ability.str:
+        return chara.str
+    elif eff == Ability.mag:
+        return chara.mag
+    elif eff == Ability.agi:
+        return chara.agi
+    elif eff == Ability.dex:
+        return chara.dex
+    elif eff == Ability.end:
+        return chara.end
+    raise ValueError
+
 def get_coeff(scope, power):
     coeff = 0
     coeff_tmp_boost = 0
     if power is None:
         return coeff, coeff_tmp_boost
+    if power == Power.simple:
+        return 2, 0
     if scope == Scope.foe:
         if power == Power.low:
             coeff = 3
@@ -222,7 +251,15 @@ class Adventurer(Character):
         self.max_mp = 0
         self.cur_hp = 0
         self.cur_mp = 0
+        self.weapon_crti_rate = 0
+        self.weapon_atk = 0
+        self.armor_def = 0
         self.skills = kwargs.get("skills", None)
+        simple_atk_enum = Attack.phy
+        if mag_val > str_val:
+            simple_atk_enum = Attack.mag
+        self.counter_attr = kwargs.get("counter_attr", Damage.none)
+        self.simple_hit_skill = Skill(Scope.foe, Power.simple, self.counter_attr, simple_atk_enum)
         # self.skills = [s for s in self.skills if s is not None]
         self.killer = kwargs.get("killer", None)
         self.weak_killer = kwargs.get("weak_killer", None)
@@ -232,7 +269,10 @@ class Adventurer(Character):
         self.steps_record = {}
         self.hp_mp_record = {}
         self.turns_dmg_record = {}
+        self.turns_counter_dmg_record = {}
         self.turns_effect_record = {}
+        self.total_skill_dmg = 0
+        self.total_counter_dmg = 0
         self.total_dmg = 0
         self.is_one_shot = False
         self.is_dead = False
@@ -340,6 +380,8 @@ class Adventurer(Character):
         else:
             raise ValueError
 
+        atk += self.weapon_atk
+
         attr_dmg_up = self.calc_total_buff(s.attr_dmg)
 
         if s.is_special:
@@ -358,8 +400,9 @@ class Adventurer(Character):
             up_rate = boost.value
             total_boost_by += up_rate * num
         killer_up = 0
-        if f.weak_killer == self.killer:
-            killer_up = 0.5
+        if self.killer:
+            if f.weak_killer == self.killer:
+                killer_up = 0.5
         if s.scope == Scope.foe:
             foe_foes_end = f.calc_total_buff(Endurance.foe)
         elif s.scope == Scope.foes:
@@ -369,15 +412,53 @@ class Adventurer(Character):
         attr_end = f.calc_total_buff(s.attr_end_ref)
         atk_end = f.calc_total_buff(enum_atk_end)
         end_up = f.calc_total_buff(Ability.end)
-        end = f.end
-        dmg = ((atk * (1 + abl_up) * (1 + killer_up) * (1 + s.coeff_tmp_boost) - end * (1 + end_up))
+        crit_dmg = self.count_crit_rate() * 0.5
+        pene_def_down = 1 - (self.count_pene_rate() * 0.5)
+        guard_atk_down = 1 - (self.count_guard_rate() * 0.5)
+        end = f.end + f.armor_def
+        dmg = ((atk * (1 + abl_up) * (1 + killer_up) * (1 + s.coeff_tmp_boost) - end * (1 + end_up) * pene_def_down / 2)
                * s.coeff
                * (1 + total_boost_by)
                * (1 + attr_dmg_up)
                * (1 - attr_end - atk_end)
                * (1 - foe_foes_end)
                * (1 + combo_atk_up)
+               * (1 + crit_dmg)
+               * guard_atk_down
                )
+        #print(dmg, self.name)
+        #print("   => atk=", atk, "abl_up=", abl_up, "killer_up=", killer_up)
+        #print("   => coeff_tmp_boost=", s.coeff_tmp_boost, "coeff=", s.coeff, "attr_dmg_up=", attr_dmg_up)
+        #print("   => attr_dmg_up=", attr_dmg_up, "attr_end=", attr_end, "foe_foes_end=", foe_foes_end)
+        #print("   => end=", end, "end_up=", end_up, "combo_atk_up=", combo_atk_up)
+        #print("   => crit_dmg=", crit_dmg, "guard_atk_down=", guard_atk_down, "pene_def_down=", pene_def_down)
+        if dmg < 0:
+            dmg = 0
+        return dmg
+
+    def calc_counter_dmg(self, f):
+        dmg = self.calc_dmg(self.simple_hit_skill, f)
+        #print(self.name, dmg)
+        if dmg < 0:
+            dmg = 0
+        self.total_counter_dmg += dmg
+        self.total_dmg += dmg
+        self.my_team.team_total_dmg += dmg
+        return dmg
+
+    def dmg_proces(self, f):
+        s = self.selected_skill
+        dmg = self.calc_dmg(s, f)
+        f.got_dmg(dmg)
+        if not f.is_dead:
+            counter_dmg = f.calc_counter_dmg(self)
+            cur_turn = self.get_cur_turn()
+            if cur_turn in self.turns_counter_dmg_record:
+                all_counter_dmg = self.turns_counter_dmg_record[cur_turn] + counter_dmg
+            else:
+                all_counter_dmg = counter_dmg
+            self.turns_counter_dmg_record[cur_turn] = all_counter_dmg
+            self.got_dmg(counter_dmg)
         return dmg
 
     def act(self):
@@ -392,14 +473,14 @@ class Adventurer(Character):
         if s.power is not None:
             if s.scope == Scope.foe:
                 f = foe_on_stage
-                dmg = self.calc_dmg(s, f)
-                f.got_dmg(dmg)
+                dmg += self.dmg_proces(f)
             else:
                 for f in foes_on_stage:
-                    dmg = self.calc_dmg(s, f)
-                    f.got_dmg(dmg)
+                    dmg += self.dmg_proces(f)
         self.turns_dmg_record[cur_turn] = dmg
+        self.total_skill_dmg += dmg
         self.total_dmg += dmg
+        self.my_team.team_total_dmg += dmg
 
         for buff in s.buffs:
             if buff.scope == Scope.my_team:
@@ -437,6 +518,42 @@ class Adventurer(Character):
         self.my_team.inc_energy_bar(1 + energy_bar_boost)
 
         return dmg
+
+    def count_rate(self, rate_eff, abi_eff1, abi_eff2):
+        v1 = get_abi_by_eff(self, abi_eff1)
+        v2 = get_abi_by_eff(self, abi_eff2)
+        if self.assist:
+            v1 += get_abi_by_eff(self.assist, abi_eff1)
+            v2 += get_abi_by_eff(self.assist, abi_eff2)
+        v1 *= (1 + self.sum_eff_value(abi_eff1))
+        v2 *= (1 + self.sum_eff_value(abi_eff2))
+
+        rate = (v1 + v2) / 10000
+        rate += self.sum_eff_value(rate_eff)
+        rate = clamp(rate, 0, 100)
+        return rate 
+
+    def count_crit_rate(self):
+        rate = self.count_rate(Ability.crit_rate, Ability.dex, Ability.agi)
+        rate += self.weapon_crti_rate
+        rate = clamp(rate, 0, 1)
+        return rate 
+
+    def count_pene_rate(self):
+        rate = self.count_rate(Ability.pene_rate, Ability.str, Ability.dex)
+        return rate 
+
+    def count_guard_rate(self):
+        rate = self.count_rate(Ability.guard_rate, Ability.agi, Ability.end)
+        return rate 
+
+    def count_counter_rate(self):
+        rate = self.count_rate(Ability.counter_rate, Ability.dex, Ability.agi)
+        return rate 
+
+    def sum_eff_value(self, effect):
+        val = self.calc_buff_value(effect) - self.calc_debuff_value(effect)
+        return val
 
     def count_buff_num(self, effect):
         cnt = 0
@@ -676,9 +793,9 @@ class Team:
         self.assists = copy.deepcopy(assists)
         self.members_on_stage = self.members[0: max_on_stage]
         self.members_on_reserve = self.members[max_on_stage:]
+        self.team_total_dmg = 0
         self.hit_dmg_turns = []
         self.got_dmg_turns = []
-        self.total_dmg = 0
         self.energy_bar = 0
         self.combo_num = 0
         self.tag = ""
@@ -707,21 +824,23 @@ class Team:
                     raise Exception(f"{m.name} 必殺技條未滿，無法施放必殺技 @Turn {self.get_cur_turn()}")
 
     def act(self):
-        all_dmg = 0
         for m in self.members_on_stage:
-            dmg = m.act()
+            m.act()
             # print(f"{m.name}\n => 招{m.selected_skill.idx}: 傷害{dmg}")
-            all_dmg += dmg
         # print(f"回合總傷害: {all_dmg}")
-        self.total_dmg += all_dmg
-        return all_dmg
 
     def show_berif(self):
+        team_total_dmg = self.team_total_dmg
+        if team_total_dmg == 0:
+            team_total_dmg = 1
         for i, m in enumerate(self.members):
             if m.is_one_shot:
-                print(f"  {m.name} + {m.assist.name} (屍體), 出招={list(m.steps_record.values())}")
+                print(f"  {m.name} + {m.assist.name} (屍體)")
             else:
-                print(f"  {m.name} + {m.assist.name} = {int(m.total_dmg):,} ({m.total_dmg / self.total_dmg * 100:,.0f}%), 出招={list(m.steps_record.values())}")
+                print(f"  {m.name} + {m.assist.name} => {int(m.total_dmg):,} ({m.total_dmg / team_total_dmg * 100:.0f}%) = " +
+                      f"技能傷害 {int(m.total_skill_dmg)} ({m.total_skill_dmg / team_total_dmg * 100:.0f}%) + " + 
+                      f"反擊傷害 {int(m.total_counter_dmg)} ({m.total_counter_dmg / team_total_dmg * 100:.0f}%)"
+                      )
         print(f"剩餘氣條: {self.energy_bar/15:.2f}")
 
     def show_result(self):
@@ -832,6 +951,10 @@ class BattleStage:
     def set_player_team(self, team):
         self.player_team = copy.deepcopy(team)
         self.player_team.tag = "player"
+        for m in self.player_team.members:
+            m.weapon_atk = 350
+            m.weapon_crti_rate = 0.3
+            m.armor_def = 350
         return self
 
     def set_enemy_team(self, team):
@@ -911,13 +1034,15 @@ class Ranker:
                 print("team was already added")
                 return 
         self.all_battles.append(copy.deepcopy(battle_to_add))
-        self.all_battles = sorted(self.all_battles, key=lambda team: team.player_team.total_dmg, reverse=True)
+        self.all_battles = sorted(self.all_battles, key=lambda team: team.player_team.team_total_dmg, reverse=True)
     def report(self, **kwargs):
         limit = kwargs.get("limit", 1)
         rank = kwargs.get("rank", None)
         show_detail = kwargs.get("detail", False)
         
-        top_dmg = int(self.all_battles[0].player_team.total_dmg)
+        top_dmg = int(self.all_battles[0].player_team.team_total_dmg)
+        if top_dmg == 0:
+            top_dmg = 1
 
         for idx, b in enumerate(self.all_battles):
             if rank:
@@ -928,7 +1053,7 @@ class Ranker:
                     return 
             print("--")
             print(f"結束回合: {int(b.end_turn)}, 結束事由: {b.ending}")
-            print(f"總傷害: {int(b.player_team.total_dmg):,} [rank {idx+1}] ({b.player_team.total_dmg / top_dmg * 100:,.0f}% of rank1)")
+            print(f"總傷害: {int(b.player_team.team_total_dmg):,} [rank {idx+1}] ({b.player_team.team_total_dmg / top_dmg * 100:,.0f}% of rank1)")
             b.player_team.show_berif()
             if show_detail:
                 b.player_team.show_result()
