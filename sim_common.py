@@ -349,6 +349,14 @@ class Adventurer(Character):
 
             attr_dmg_up = self.calc_total_buff(s.attr_dmg)
 
+            if s.is_special:
+                combo_num = self.my_team.combo_num
+                if combo_num < 1:
+                    raise ValueError
+                combo_atk_up = (self.my_team.combo_num - 1) * 0.20
+            else:
+                combo_atk_up = 0
+
             total_boost_by = 0
 
             for boost in s.boost_by_buff:
@@ -374,6 +382,7 @@ class Adventurer(Character):
                        * (1 + attr_dmg_up)
                        * (1 - attr_end - atk_end)
                        * (1 - foe_end)
+                       * (1 + combo_atk_up)
                        )
                 f.got_dmg(dmg)
             else:
@@ -392,6 +401,7 @@ class Adventurer(Character):
                            * (1 + attr_dmg_up)
                            * (1 - attr_end - atk_end)
                            * (1 - foes_end)
+                           * (1 + combo_atk_up)
                            )
                     f.got_dmg(dmg)
         self.turns_dmg_record[cur_turn] = dmg
@@ -676,6 +686,7 @@ class Team:
         self.got_dmg_turns = []
         self.total_dmg = 0
         self.energy_bar = 0
+        self.combo_num = 0
         self.tag = ""
 
     def __eq__(self, cmp_team):
@@ -766,6 +777,7 @@ class Team:
             if m.is_one_shot:
                 m.is_dead = True
         self.team_fill()
+        self.combo_num = 0
 
     def inc_energy_bar(self, num):
         self.energy_bar += num
@@ -776,10 +788,10 @@ class Team:
         return int(self.energy_bar / 15)
 
     def dec_energy_bar(self):
-        print(self.energy_bar)
         self.energy_bar -= 15
         if self.energy_bar < 0:
             return False
+        self.combo_num += 1
         return True
 
     def init(self, battle_stage):
