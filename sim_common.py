@@ -47,6 +47,7 @@ class Mission:
 
 
 class Damage:
+    none = "Damage.none"
     phy = "Damage.phy"
     mag = "Damage.mag"
     fire = "Damage.fire"
@@ -61,12 +62,13 @@ class Damage:
 
     @classmethod
     def get_enums(cls):
-        return [cls.phy, cls.mag,
+        return [cls.phy, cls.mag, cls.none,
                 cls.fire, cls.earth, cls.wind, cls.ice, cls.thunder, cls.light, cls.dark,
                 cls.foe, cls.foes]
 
 
 class Endurance:
+    none = "Endurance.none"
     phy = "Endurance.phy"
     mag = "Endurance.mag"
     fire = "Endurance.fire"
@@ -81,7 +83,7 @@ class Endurance:
 
     @classmethod
     def get_enums(cls):
-        return [cls.phy, cls.mag,
+        return [cls.phy, cls.mag, cls.none,
                 cls.fire, cls.earth, cls.wind, cls.ice, cls.thunder, cls.light, cls.dark,
                 cls.foe, cls.foes]
 
@@ -813,7 +815,7 @@ class BattleStage:
         self.cur_turn = 1
         self.player_team = None
         self.enemy_team = None
-        self.ending = None
+        self.ending = "已達最大回合數"
 
     def is_last_turn(self):
         if self.cur_turn >= self.max_turns:
@@ -828,14 +830,19 @@ class BattleStage:
 
     def set_enemy_team(self, team):
         self.enemy_team = copy.deepcopy(team)
-        self.player_team.tag = "enemy"
+        self.enemy_team.tag = "enemy"
         return self
 
     def run(self):
         try:
             self.try_run()
         except EndEvent as e:
-            self.ending = e
+            if str(e) == "enemy die":
+                self.ending = "敵人殲滅"
+            elif str(e) == "player die":
+                self.ending = "玩家陣亡"
+            else:
+                raise e
 
     def try_run(self):
         self.player_team.opponent_team = self.enemy_team
@@ -914,6 +921,7 @@ class Ranker:
                 if idx >= limit:
                     return 
             print("--")
+            print(f"結束回合: {int(b.end_turn)}, 結束事由: {b.ending}")
             print(f"總傷害: {int(b.player_team.total_dmg):,} [rank {idx+1}] ({b.player_team.total_dmg / top_dmg * 100:,.0f}% of rank1)")
             b.player_team.show_berif()
             if show_detail:

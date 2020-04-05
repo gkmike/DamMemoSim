@@ -213,17 +213,17 @@ my_adv_cards = MyCards([
 boss_cards = MyCards([
     Adventurer("九魔姬", 100000000, 0,
                 0, 100, 0, 0, 1000,
-               skills=[Skill(Scope.foes, Power.high, Damage.dark, Attack.mag)],
+               skills=[Skill(Scope.foes, Power.low, Damage.dark, Attack.mag)],
                passive_skills=[Skill(buffs=[Effect(Scope.my_self, Endurance.fire, 0.1)])]
                ),
     Adventurer("骷髏-小", 100000000, 0,
-                100, 150, 0, 0, 0,
-               skills=[Skill(Scope.foes, Power.high, Damage.dark, Attack.phy)],
+                10, 150, 0, 0, 0,
+               skills=[Skill(Scope.foes, Power.low, Damage.none, Attack.phy)],
                passive_skills=[Skill(buffs=[Effect(Scope.my_self, Endurance.fire, 0.1)])]
                ),
     Adventurer("骷髏-大", 100000000, 0,
-                100, 150, 0, 0, 0,
-               skills=[Skill(Scope.foes, Power.high, Damage.dark, Attack.phy)],
+                10, 150, 0, 0, 0,
+               skills=[Skill(Scope.foes, Power.low, Damage.none, Attack.phy)],
                passive_skills=[Skill(buffs=[Effect(Scope.my_self, Endurance.fire, 0.1)])]
                ),
 ])
@@ -285,6 +285,6 @@ battle.run()
 
 
 ranker.add(battle)
-# ranker.report(limit=1, detail=False)
-ranker.report(limit=1, detail=True)
+ranker.report(limit=1, detail=False)
+#ranker.report(limit=1, detail=True)
 #ranker.report()
