@@ -320,6 +320,66 @@ class Adventurer(Character):
             if len(self.my_team.members_on_stage):
                 raise EndEvent(self.my_team.tag + ' die')
 
+    def calc_dmg(self, skill, target):
+        f = target
+        s = skill
+        if s.attack == Attack.phy:
+            if self.assist:
+                atk = self.str + self.assist.str
+            else:
+                atk = self.str
+            abl_up = self.calc_total_buff(Ability.str)
+            enum_atk_end = Damage.phy
+        elif s.attack == Attack.mag:
+            if self.assist:
+                atk = self.mag + self.assist.mag
+            else:
+                atk = self.mag
+            abl_up = self.calc_total_buff(Ability.mag)
+            enum_atk_end = Damage.mag
+        else:
+            raise ValueError
+
+        attr_dmg_up = self.calc_total_buff(s.attr_dmg)
+
+        if s.is_special:
+            combo_num = self.my_team.combo_num
+            if combo_num < 1:
+                raise ValueError
+            combo_atk_up = (self.my_team.combo_num - 1) * 0.20
+        else:
+            combo_atk_up = 0
+
+        total_boost_by = 0
+
+        for boost in s.boost_by_buff:
+            eff = boost.effect_enum
+            num = self.count_buff_num(eff)
+            up_rate = boost.value
+            total_boost_by += up_rate * num
+        killer_up = 0
+        if f.weak_killer == self.killer:
+            killer_up = 0.5
+        if s.scope == Scope.foe:
+            foe_foes_end = f.calc_total_buff(Endurance.foe)
+        elif s.scope == Scope.foes:
+            foe_foes_end = f.calc_total_buff(Endurance.foes)
+        else:
+            raise Exception
+        attr_end = f.calc_total_buff(s.attr_end_ref)
+        atk_end = f.calc_total_buff(enum_atk_end)
+        end_up = f.calc_total_buff(Ability.end)
+        end = f.end
+        dmg = ((atk * (1 + abl_up) * (1 + killer_up) * (1 + s.coeff_tmp_boost) - end * (1 + end_up))
+               * s.coeff
+               * (1 + total_boost_by)
+               * (1 + attr_dmg_up)
+               * (1 - attr_end - atk_end)
+               * (1 - foe_foes_end)
+               * (1 + combo_atk_up)
+               )
+        return dmg
+
     def act(self):
         s = self.selected_skill
         cur_turn = self.get_cur_turn()
@@ -330,79 +390,13 @@ class Adventurer(Character):
         foes_on_stage = self.my_team.opponent_team.members_on_stage
         foe_on_stage = foes_on_stage[self.selected_enemy]
         if s.power is not None:
-            if s.attack == Attack.phy:
-                if self.assist:
-                    atk = self.str + self.assist.str
-                else:
-                    atk = self.str
-                abl_up = self.calc_total_buff(Ability.str)
-                enum_atk_end = Damage.phy
-            elif s.attack == Attack.mag:
-                if self.assist:
-                    atk = self.mag + self.assist.mag
-                else:
-                    atk = self.mag
-                abl_up = self.calc_total_buff(Ability.mag)
-                enum_atk_end = Damage.mag
-            else:
-                raise ValueError
-
-            attr_dmg_up = self.calc_total_buff(s.attr_dmg)
-
-            if s.is_special:
-                combo_num = self.my_team.combo_num
-                if combo_num < 1:
-                    raise ValueError
-                combo_atk_up = (self.my_team.combo_num - 1) * 0.20
-            else:
-                combo_atk_up = 0
-
-            total_boost_by = 0
-
-            for boost in s.boost_by_buff:
-                eff = boost.effect_enum
-                num = self.count_buff_num(eff)
-                up_rate = boost.value
-                total_boost_by += up_rate * num
-
-
             if s.scope == Scope.foe:
                 f = foe_on_stage
-                killer_up = 0
-                if f.weak_killer == self.killer:
-                    killer_up = 0.5
-                foe_end = f.calc_total_buff(Endurance.foe)
-                attr_end = f.calc_total_buff(s.attr_end_ref)
-                atk_end = f.calc_total_buff(enum_atk_end)
-                end_up = f.calc_total_buff(Ability.end)
-                end = f.end
-                dmg = ((atk * (1 + abl_up) * (1 + killer_up) * (1 + s.coeff_tmp_boost) - end * (1 + end_up))
-                       * s.coeff
-                       * (1 + total_boost_by)
-                       * (1 + attr_dmg_up)
-                       * (1 - attr_end - atk_end)
-                       * (1 - foe_end)
-                       * (1 + combo_atk_up)
-                       )
+                dmg = self.calc_dmg(s, f)
                 f.got_dmg(dmg)
             else:
                 for f in foes_on_stage:
-                    killer_up = 0
-                    if f.weak_killer == self.killer:
-                        killer_up = 0.5
-                    foes_end = f.calc_total_buff(Endurance.foes)
-                    attr_end = f.calc_total_buff(s.attr_end_ref)
-                    atk_end = f.calc_total_buff(enum_atk_end)
-                    end_up = f.calc_total_buff(Ability.end)
-                    end = f.end
-                    dmg += ((atk * (1 + abl_up) * (1 + killer_up) * (1 + s.coeff_tmp_boost) - end * (1 + end_up))
-                           * s.coeff
-                           * (1 + total_boost_by)
-                           * (1 + attr_dmg_up)
-                           * (1 - attr_end - atk_end)
-                           * (1 - foes_end)
-                           * (1 + combo_atk_up)
-                           )
+                    dmg = self.calc_dmg(s, f)
                     f.got_dmg(dmg)
         self.turns_dmg_record[cur_turn] = dmg
         self.total_dmg += dmg
