@@ -510,7 +510,8 @@ class Adventurer(Character):
                 raise ValueError
 
         energy_bar_boost = self.got_buff[Ability.energy_bar][0]
-        self.my_team.inc_energy_bar(1 + energy_bar_boost)
+        if not s.is_special:
+            self.my_team.inc_energy_bar(1 + energy_bar_boost)
 
         return dmg
 

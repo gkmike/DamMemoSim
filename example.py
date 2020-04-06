@@ -78,7 +78,12 @@ my_ass_cards = MyCards([
     Assist("劍之聖女", 684 + 150, 175 + 30,
            256 + 36, 137 + 9, 296 + 24, 242 + 50, 276 + 36, tags=[Damage.thunder, Damage.dark],
            skill=Skill(buffs=[Effect(Scope.my_team, Damage.thunder, 0.10)],
-                       debuffs=[Effect(Scope.foes, Endurance.dark, 0.10)])
+                       debuffs=[Effect(Scope.foes, Endurance.dark, 0.10),
+                                Effect(Scope.foes, Ability.str, 0.10), Effect(Scope.foes, Ability.mag, 0.10)])
+           ),
+    Assist("溫泉乳神", 942 + 305, 278 + 60,
+           293+77, 239+28, 406+53, 329+75, 591+77,
+           skill=Skill(debuffs=[Effect(Scope.foes, Ability.str, 0.15)])
            ),
 ])
 
@@ -201,6 +206,18 @@ my_adv_cards = MyCards([
                    Skill(Scope.foes, Power.high, Damage.light, Attack.mag, temp_boost=True, mp=29),
                    Skill(Scope.foe, Power.ultra, Damage.light, Attack.mag, is_special=True, temp_boost=True),
                ]),
+    Adventurer("情人艾斯", 4017+1425, 421+140,
+               459+123, 560+220, 744+192, 897+223, 1836+637,
+               skills=[
+                   Skill(Scope.foe, Power.high, Damage.light, Attack.mag, temp_boost=True, mp=41,
+                         debuffs=[Effect(Scope.foe, Endurance.phy, 0.35, 4)],
+                         adj_buffs=[Effect(Scope.foes, AdjBuff.clear_buff, 0, 0, Ability.mag)]),
+                   Skill(Scope.foe, Power.high, Damage.light, Attack.mag, temp_boost=True, mp=44,
+                         buffs=[Effect(Scope.my_team, Damage.light, 0.20, 4)]),
+                   Skill(Scope.foe, Power.low, Damage.light, Attack.mag,  mp=27,
+                         buffs=[Effect(Scope.my_self, Ability.mag, 0.75, 4)]),
+                   Skill(Scope.foe, Power.ultra, Damage.light, Attack.mag, is_special=True, temp_boost=True),
+               ]),
     Adventurer("春姬", 3740 + 1450, 438 + 160,
                1100 + 197, 529 + 183, 908 + 305, 913 + 262, 1737 + 667,
                tags=[Damage.mag, Damage.fire, Scope.foe, Scope.foes],
@@ -227,6 +244,38 @@ my_adv_cards = MyCards([
                    Skill(Scope.foe, Power.super, Damage.ice, Attack.mag, mp=35,
                          debuffs=[Effect(Scope.foe, Endurance.foe, 0.20, 3)]),
                    Skill(Scope.foe, Power.ultra, Damage.ice, Attack.mag, is_special=True),
+               ]),
+    Adventurer("偶像莉涅", 2510+1084, 312+87,
+               721+201, 212+69, 413+81, 762+284, 727+304,
+               skills=[
+                   Skill(Scope.foes, Power.super, Damage.light, Attack.phy, mp=59,
+                         adj_buffs=[Effect(Scope.foes, AdjBuff.clear_buff, 0, 0, Ability.str),
+                                    Effect(Scope.foes, AdjBuff.clear_buff, 0, 0, Ability.mag)]),
+                   Skill(mp=45, buffs=[Effect(Scope.my_team, Ability.energy_bar, 0.33, 4),
+                                       Effect(Scope.my_team, Ability.counter_rate, 0.20, 4),
+                                       Effect(Scope.my_team, Ability.crit_rate, 0.20, 4),
+                                       Effect(Scope.my_team, Ability.pene_rate, 0.20, 4)]),
+                   Skill(Scope.foe, Power.high, Damage.light, Attack.phy, mp=25,
+                         boost_by_buff=[Effect(Scope.my_self, Ability.crit_rate, 0.40)]),
+               ]),
+    Adventurer("無人島春姬", 2103+663, 313+84,
+               209+90, 183+75, 397+149, 392+160, 886+358,
+               skills=[
+                   Skill(mp=52,
+                         buffs=[Effect(Scope.my_self, Ability.mag, 0.60, 4),
+                                Effect(Scope.my_self, Damage.light, 0.60, 4),
+                                Effect(Scope.my_team, Ability.mag, 0.30, 4),
+                                Effect(Scope.my_team, Damage.light, 0.30, 4)]),
+                   Skill(mp=20,
+                         adj_buffs=[Effect(Scope.foe, AdjBuff.clear_buff, 0, 0, Ability.str),
+                                    Effect(Scope.foe, AdjBuff.clear_buff, 0, 0, Ability.mag)],
+                         debuffs=[Effect(Scope.foe, Endurance.foe, 0.20, 4)]),
+                   Skill(Scope.foe, Power.super, Damage.light, Attack.mag, mp=136,
+                         boost_by_buff=[Effect(Scope.my_self, Ability.mag, 0.40)]),
+                   Skill(Scope.foe, Power.ultra, Damage.light, Attack.mag, is_special=True,
+                         boost_by_buff=[Effect(Scope.my_self, Ability.mag, 0.80)],
+                         buffs=[Effect(Scope.my_team, Damage.light, 0.80, 3)]
+                         ),
                ]),
 ])
 
