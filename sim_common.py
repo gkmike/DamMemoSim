@@ -1,4 +1,6 @@
 import copy
+
+
 class Character:
     def __init__(self, name, hp_val, mp_val, str_val, end_val, dex_val, agi_val, mag_val, **kwargs):
         self.tags = kwargs.get("tags", [])
@@ -30,7 +32,6 @@ class Ability:
     pene_rate = "Ability.pene_rate"
     counter_rate = "Ability.counter_rate"
     guard_rate = "Ability.guard_rate"
-
 
     @classmethod
     def get_enums(cls):
@@ -149,10 +150,11 @@ for multi_effect_enum in [Ability.get_enums(), Damage.get_enums(), Endurance.get
 
 def clamp(val, min_val, max_val):
     if val < min_val:
-        val = min_va
+        val = min_val
     elif val > max_val:
         val = max_val
     return val
+
 
 def get_abi_by_eff(chara, eff):
     if eff == Ability.str:
@@ -166,6 +168,7 @@ def get_abi_by_eff(chara, eff):
     elif eff == Ability.end:
         return chara.end
     raise ValueError
+
 
 def get_coeff(scope, power):
     coeff = 0
@@ -305,7 +308,6 @@ class Adventurer(Character):
         self.selected_skill = None
         self.selected_enemy = None
 
-
     def set_one_shot(self):
         self.is_one_shot = True
         return self
@@ -319,8 +321,7 @@ class Adventurer(Character):
         self.assist = assist
         assist.my_adv = self
 
-
-    def select_skill(self, special_avail):
+    def select_skill(self):
         if self.predefined_steps is None:
             raise Exception(f"{self.name} 沒有設定預排技能")
         if self.is_one_shot is False:
@@ -420,19 +421,19 @@ class Adventurer(Character):
                * (1 + crit_dmg)
                * guard_atk_down
                )
-        #print(dmg, self.name)
-        #print("   => atk=", atk, "abl_up=", abl_up, "killer_up=", killer_up)
-        #print("   => coeff_tmp_boost=", s.coeff_tmp_boost, "coeff=", s.coeff, "attr_dmg_up=", attr_dmg_up)
-        #print("   => attr_dmg_up=", attr_dmg_up, "attr_end=", attr_end, "foe_foes_end=", foe_foes_end)
-        #print("   => end=", end, "end_up=", end_up, "combo_atk_up=", combo_atk_up)
-        #print("   => crit_dmg=", crit_dmg, "guard_atk_down=", guard_atk_down, "pene_def_down=", pene_def_down)
+        # print(dmg, self.name)
+        # print("   => atk=", atk, "abl_up=", abl_up, "killer_up=", killer_up)
+        # print("   => coeff_tmp_boost=", s.coeff_tmp_boost, "coeff=", s.coeff, "attr_dmg_up=", attr_dmg_up)
+        # print("   => attr_dmg_up=", attr_dmg_up, "attr_end=", attr_end, "foe_foes_end=", foe_foes_end)
+        # print("   => end=", end, "end_up=", end_up, "combo_atk_up=", combo_atk_up)
+        # print("   => crit_dmg=", crit_dmg, "guard_atk_down=", guard_atk_down, "pene_def_down=", pene_def_down)
         if dmg < 0:
             dmg = 0
         return dmg
 
     def calc_counter_dmg(self, f):
         dmg = self.calc_dmg(self.simple_hit_skill, f)
-        #print(self.name, dmg)
+        # print(self.name, dmg)
         if dmg < 0:
             dmg = 0
         self.total_counter_dmg += dmg
@@ -734,7 +735,9 @@ class Adventurer(Character):
                 all_p_debuff.append([eff, passive_debuff])
 
         cur_turn = self.get_cur_turn()
-        self.turns_effect_record[cur_turn] = [all_buff, all_debuff, all_ass_buff, all_ass_debuff, all_p_buff, all_p_debuff]
+        self.turns_effect_record[cur_turn] = [all_buff, all_debuff,
+                                              all_ass_buff, all_ass_debuff,
+                                              all_p_buff, all_p_debuff]
 
     def init_passive_skills(self):
         if self.passive_skills:
@@ -812,14 +815,9 @@ class Team:
 
     def select_skills(self):
         for m in self.members_on_stage:
-            sv = self.max_special_moves()
-            if sv > 0:
-                has_sv = True
-            else:
-                has_sv = False
-            m.select_skill(has_sv)
+            m.select_skill()
             if m.selected_skill.is_special:
-                if self.dec_energy_bar() == False:
+                if not self.dec_energy_bar():
                     raise Exception(f"{m.name} 必殺技條未滿，無法施放必殺技 @Turn {self.get_cur_turn()}")
 
     def act(self):
@@ -828,7 +826,7 @@ class Team:
             # print(f"{m.name}\n => 招{m.selected_skill.idx}: 傷害{dmg}")
         # print(f"回合總傷害: {all_dmg}")
 
-    def show_berif(self):
+    def show_brief(self):
         team_total_dmg = self.team_total_dmg
         if team_total_dmg == 0:
             team_total_dmg = 1
@@ -839,7 +837,8 @@ class Team:
                 dead_text = ""
                 if m.is_dead:
                     dead_text = " (死亡) "
-                print(f"  {m.name} + {m.assist.name}{dead_text}=> {int(m.total_dmg):,} ({m.total_dmg / team_total_dmg * 100:.0f}%) = " +
+                print(f"  {m.name} + {m.assist.name}{dead_text}=> "
+                      f"{int(m.total_dmg):,} ({m.total_dmg / team_total_dmg * 100:.0f}%) = " +
                       f"技能傷害 {int(m.total_skill_dmg)} ({m.total_skill_dmg / team_total_dmg * 100:.0f}%) + " + 
                       f"反擊傷害 {int(m.total_counter_dmg)} ({m.total_counter_dmg / team_total_dmg * 100:.0f}%)"
                       )
@@ -1031,9 +1030,11 @@ class MyCards:
             raise ValueError
         return self.card_list
 
+
 class Ranker:
     def __init__(self):
         self.all_battles = []
+
     def add(self, battle_to_add):
         for bt in self.all_battles:
             if bt.player_team == battle_to_add.player_team:
@@ -1041,6 +1042,7 @@ class Ranker:
                 return 
         self.all_battles.append(copy.deepcopy(battle_to_add))
         self.all_battles = sorted(self.all_battles, key=lambda team: team.player_team.team_total_dmg, reverse=True)
+
     def report(self, **kwargs):
         limit = kwargs.get("limit", 1)
         rank = kwargs.get("rank", None)
@@ -1059,8 +1061,9 @@ class Ranker:
                     return 
             print("--")
             print(f"結束回合: {int(b.end_turn)}, 結束事由: {b.ending}")
-            print(f"總傷害: {int(b.player_team.team_total_dmg):,} [rank {idx+1}] ({b.player_team.team_total_dmg / top_dmg * 100:,.0f}% of rank1)")
-            b.player_team.show_berif()
+            print(f"總傷害: {int(b.player_team.team_total_dmg):,} [rank {idx+1}] "
+                  f"({b.player_team.team_total_dmg / top_dmg * 100:,.0f}% of rank1)")
+            b.player_team.show_brief()
             if show_detail:
                 b.player_team.show_result()
                 b.enemy_team.show_result()
