@@ -82,7 +82,7 @@ my_ass_cards = MyCards([
                                 Effect(Scope.foes, Ability.str, 0.10), Effect(Scope.foes, Ability.mag, 0.10)])
            ),
     Assist("溫泉乳神", 942 + 305, 278 + 60,
-           293+77, 239+28, 406+53, 329+75, 591+77,
+           293 + 77, 239 + 28, 406 + 53, 329 + 75, 591 + 77,
            skill=Skill(debuffs=[Effect(Scope.foes, Ability.str, 0.15)])
            ),
 ])
@@ -109,7 +109,8 @@ my_adv_cards = MyCards([
                    Skill(Scope.foes, Power.low, Damage.fire, Attack.phy, mp=37,
                          buffs=[Effect(Scope.my_self, Damage.fire, 0.50, 4),
                                 Effect(Scope.my_self, Ability.str, 0.50, 4)]),
-                   Skill(Scope.foes, Power.super, Damage.fire, Attack.phy, mp=49),
+                   Skill(Scope.foes, Power.super, Damage.fire, Attack.phy, mp=49,
+                         buffs=[Effect(Scope.my_team, Recover.hp_turn, 0.25, 1)]),
                    Skill(Scope.foe, Power.high, Damage.fire, Attack.phy, mp=32,
                          adj_buffs=[Effect(Scope.foe, AdjBuff.extend_debuff, 1, 0)]),
                    Skill(Scope.foes, Power.ultra, Damage.fire, Attack.phy, is_special=True, temp_boost=True,
@@ -206,15 +207,15 @@ my_adv_cards = MyCards([
                    Skill(Scope.foes, Power.high, Damage.light, Attack.mag, temp_boost=True, mp=29),
                    Skill(Scope.foe, Power.ultra, Damage.light, Attack.mag, is_special=True, temp_boost=True),
                ]),
-    Adventurer("情人艾斯", 4017+1425, 421+140,
-               459+123, 560+220, 744+192, 897+223, 1836+637,
+    Adventurer("情人艾斯", 4017 + 1425, 421 + 140,
+               459 + 123, 560 + 220, 744 + 192, 897 + 223, 1836 + 637,
                skills=[
                    Skill(Scope.foe, Power.high, Damage.light, Attack.mag, temp_boost=True, mp=41,
                          debuffs=[Effect(Scope.foe, Endurance.phy, 0.35, 4)],
                          adj_buffs=[Effect(Scope.foes, AdjBuff.clear_buff, 0, 0, Ability.mag)]),
                    Skill(Scope.foe, Power.high, Damage.light, Attack.mag, temp_boost=True, mp=44,
                          buffs=[Effect(Scope.my_team, Damage.light, 0.20, 4)]),
-                   Skill(Scope.foe, Power.low, Damage.light, Attack.mag,  mp=27,
+                   Skill(Scope.foe, Power.low, Damage.light, Attack.mag, mp=27,
                          buffs=[Effect(Scope.my_self, Ability.mag, 0.75, 4)]),
                    Skill(Scope.foe, Power.ultra, Damage.light, Attack.mag, is_special=True, temp_boost=True),
                ]),
@@ -223,15 +224,18 @@ my_adv_cards = MyCards([
                tags=[Damage.mag, Damage.fire, Scope.foe, Scope.foes],
                skills=[
                    Skill(Scope.foes, Power.mid, Damage.fire, Attack.mag, mp=34,
-                         debuffs=[Effect(Scope.foes, Ability.str, 0.40, 3)]),
-                   Skill(mp=12, buffs=[Effect(Scope.my_self, Recover.mp, 0.15),
+                         debuffs=[Effect(Scope.foes, Ability.str, 0.40, 3),
+                                  Effect(Scope.foes, Ability.mag, 0.40, 3)]),
+                   Skill(mp=12, buffs=[Effect(Scope.my_self, Recover.mp_imm, 0.15),
                                        Effect(Scope.my_team, Ability.counter_rate, 0.30, 3),
                                        Effect(Scope.my_team, Ability.pene_rate, 0.30, 3)]),
-                   Skill(mp=141, buffs=[Effect(Scope.my_team, Recover.hp, 0.30)],
+                   Skill(mp=141, buffs=[Effect(Scope.my_team, Recover.hp_imm, 0.30)],
                          adj_buffs=[Effect(Scope.foes, AdjBuff.extend_debuff, 2, 0),
                                     Effect(Scope.my_team, AdjBuff.extend_buff, 2, 0)]),
                    Skill(is_special=True, buffs=[Effect(Scope.my_team, Ability.mag, 1.0, 3),
-                                                 Effect(Scope.my_team, Ability.str, 1.0, 3)]),
+                                                 Effect(Scope.my_team, Ability.str, 1.0, 3),
+                                                 Effect(Scope.my_team, Recover.hp_imm, 0.8),
+                                                 Effect(Scope.my_team, Recover.hp_turn, 0.4, 3)]),
                ]),
     Adventurer("泳裝媽媽", 2744 + 864, 334 + 88,
                326 + 64, 280 + 99, 673 + 246, 589 + 211, 1179 + 426,
@@ -245,8 +249,8 @@ my_adv_cards = MyCards([
                          debuffs=[Effect(Scope.foe, Endurance.foe, 0.20, 3)]),
                    Skill(Scope.foe, Power.ultra, Damage.ice, Attack.mag, is_special=True),
                ]),
-    Adventurer("偶像莉涅", 2510+1084, 312+87,
-               721+201, 212+69, 413+81, 762+284, 727+304,
+    Adventurer("偶像莉涅", 2510 + 1084, 312 + 87,
+               721 + 201, 212 + 69, 413 + 81, 762 + 284, 727 + 304,
                skills=[
                    Skill(Scope.foes, Power.super, Damage.light, Attack.phy, mp=59,
                          adj_buffs=[Effect(Scope.foes, AdjBuff.clear_buff, 0, 0, Ability.str),
@@ -258,8 +262,8 @@ my_adv_cards = MyCards([
                    Skill(Scope.foe, Power.high, Damage.light, Attack.phy, mp=25,
                          boost_by_buff=[Effect(Scope.my_self, Ability.crit_rate, 0.40)]),
                ]),
-    Adventurer("無人島春姬", 2103+663, 313+84,
-               209+90, 183+75, 397+149, 392+160, 886+358,
+    Adventurer("無人島春姬", 2103 + 663, 313 + 84,
+               209 + 90, 183 + 75, 397 + 149, 392 + 160, 886 + 358, killer=Killer.undead,
                skills=[
                    Skill(mp=52,
                          buffs=[Effect(Scope.my_self, Ability.mag, 0.60, 4),
@@ -271,11 +275,25 @@ my_adv_cards = MyCards([
                                     Effect(Scope.foe, AdjBuff.clear_buff, 0, 0, Ability.mag)],
                          debuffs=[Effect(Scope.foe, Endurance.foe, 0.20, 4)]),
                    Skill(Scope.foe, Power.super, Damage.light, Attack.mag, mp=136,
-                         boost_by_buff=[Effect(Scope.my_self, Ability.mag, 0.40)]),
+                         boost_by_buff=[Effect(Scope.my_self, Ability.mag, 0.40)],
+                         buffs=[Effect(Scope.my_team, Recover.hp_turn, 0.2, 1)]),
                    Skill(Scope.foe, Power.ultra, Damage.light, Attack.mag, is_special=True,
                          boost_by_buff=[Effect(Scope.my_self, Ability.mag, 0.80)],
-                         buffs=[Effect(Scope.my_team, Damage.light, 0.80, 3)]
+                         buffs=[Effect(Scope.my_team, Damage.light, 0.80, 3),
+                                Effect(Scope.my_team, Recover.hp_turn, 0.4, 3)]
                          ),
+               ],
+               passive_skills=[Skill(buffs=[Effect(Scope.my_self, Recover.mp_turn, 0.08)])],
+               ),
+    Adventurer("雷貝", 2109+603, 274+84,
+               1, 1, 1, 1, 1,
+               skills=[
+                   Skill(),
+                   Skill(),
+                   Skill(Scope.foe, Power.super, Damage.thunder, Attack.mag, mp=40,
+                         debuffs=[Effect(Scope.foe, Endurance.mag, 0.3, 4),
+                                  Effect(Scope.foe, Endurance.thunder, 0.3, 4)]),
+                   Skill(),
                ]),
 ])
 
@@ -285,78 +303,60 @@ boss_cards = MyCards([
                skills=[Skill(Scope.foes, Power.low, Damage.dark, Attack.mag)],
                passive_skills=[Skill(buffs=[Effect(Scope.my_self, Endurance.fire, 0.1)])]
                ),
-    Adventurer("骷髏-小", 100000000, 0,
-               500, 150, 0, 0, 0,
-               skills=[Skill(
-                   buffs=[Effect(Scope.my_self, Endurance.phy, 0.2, 3), Effect(Scope.my_self, Endurance.mag, 0.2, 3)]),
-                       Skill(Scope.foe, Power.low, Damage.none, Attack.phy)],
-               passive_skills=[Skill(debuffs=[Effect(Scope.my_self, Endurance.thunder, 0.6),
-                                              Effect(Scope.my_self, Endurance.light, 0.3)])]
-               ),
-    Adventurer("骷髏-大", 100000000, 0,
-               1000, 150, 0, 0, 0,
-               skills=[Skill(buffs=[Effect(Scope.my_self, Ability.str, 0.2, 3)]),
-                       Skill(Scope.foes, Power.low, Damage.none, Attack.phy)],
-               passive_skills=[Skill(debuffs=[Effect(Scope.my_self, Endurance.thunder, 0.3),
-                                              Effect(Scope.my_self, Endurance.light, 0.6)])]
+    # str=1550
+    Adventurer("蘑菇艾斯", 10000000, 0,
+               1000, 2422, 0, 0, 0, weak_killer=Killer.undead,
+               skills=[Skill(Scope.foes, Power.low, Damage.thunder, Attack.phy),
+                       Skill(Scope.foes, Power.high, Damage.thunder, Attack.phy,
+                             buffs=[Effect(Scope.my_self, Ability.str, 0.2, 5)],
+                             adj_buffs=[Effect(Scope.foes, AdjBuff.clear_buff, 0, 0)])],
+               passive_skills=[Skill(debuffs=[Effect(Scope.my_self, Endurance.thunder, 0.5),
+                                              Effect(Scope.my_self, Endurance.light, 0.8 + 0.28)],  # + familia up
+                                     buffs=[Effect(Scope.my_self, Endurance.phy, 0.4),
+                                            Effect(Scope.my_self, Endurance.earth, 0.25),
+                                            Effect(Scope.my_self, Endurance.dark, 0.4)])]
                ),
 ])
 
 ranker = Ranker()
 
-boss = [boss_cards.get_card_by_name("骷髏-小").set_predefined_steps([1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2]),
-        boss_cards.get_card_by_name("骷髏-小").set_predefined_steps([1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2]),
-        boss_cards.get_card_by_name("骷髏-大").set_predefined_steps([1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2]),
-        ]
-enemy_team = Team(3, boss)
+boss1 = boss_cards.get_card_by_name("蘑菇艾斯")
+#                                     1  2  3  4  5  6  7  8  9  10 11 12 13 14 15
+bosses = [boss1.set_predefined_steps([1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1])]
+enemy_team = Team(1, bosses)
 
-advs = [my_adv_cards.get_card_by_name("新裝艾斯").set_predefined_steps([1, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2]),
-        my_adv_cards.get_card_by_name("英雄阿爾戈").set_predefined_steps([1, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2]),
-        my_adv_cards.get_card_by_name("聖誕千草").set_predefined_steps([1, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2]),
-        my_adv_cards.get_card_by_name("米卡莎").set_one_shot().set_predefined_steps([1]),
-        my_adv_cards.get_card_by_name("劇場莉莉").set_one_shot().set_predefined_steps([0, 1]),
-        my_adv_cards.get_card_by_name("春姬").set_predefined_steps([0, 0, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2]),
+p1 = my_adv_cards.get_card_by_name("偶像莉涅").set_one_shot()
+p2 = my_adv_cards.get_card_by_name("無人島春姬")
+p3 = my_adv_cards.get_card_by_name("折紙")
+p4 = my_adv_cards.get_card_by_name("春姬")
+p5 = my_adv_cards.get_card_by_name("雷貝").set_one_shot()
+p6 = my_adv_cards.get_card_by_name("情人艾斯")
+
+#                                1  2  3  4  5  6  7  8  9  10 11 12 13 14 15
+advs = [p1.set_predefined_steps([2]),
+        p2.set_predefined_steps([2, 3, 1, 4, 3, 3, 3, 1, 3, 4, 3]),
+        p3.set_predefined_steps([2, 1, 2, 1, 1, 1, 1, 2, 1, 1, 1]),
+        p4.set_predefined_steps([1, 3, 2, 3, 2, 3, 3, 2, 3, 4, 3]),
+        p5.set_predefined_steps([x, 3]),
+        p6.set_predefined_steps([x, x, 3, 1, 1, 1, 1, 3, 1, 1, 1, 1]),
         ]
 
 asses = [my_ass_cards.get_card_by_name("劇場乳神"),
-         my_ass_cards.get_card_by_name("月神"),
-         my_ass_cards.get_card_by_name("泳裝芙蕾雅"),
-         my_ass_cards.get_card_by_name("製作人荷米斯"),
-         my_ass_cards.get_card_by_name("聖爐乳神"),
-         my_ass_cards.get_card_by_name("泳裝埃伊娜")
+         my_ass_cards.get_card_by_name("奧娜"),
+         my_ass_cards.get_card_by_name("溫泉乳神"),
+         my_ass_cards.get_card_by_name("伯爵希兒"),
+         my_ass_cards.get_card_by_name("情人埃伊娜"),
+         my_ass_cards.get_card_by_name("新娘希兒")
          ]
 
 my_team = Team(4, advs, asses)
 
-battle = BattleStage(12)
+battle = BattleStage(11)
 battle.set_player_team(my_team).set_enemy_team(enemy_team)
 battle.run()
 
 ranker.add(battle)
 
-advs = [my_adv_cards.get_card_by_name("新裝艾斯").set_predefined_steps([1, 2, 2, 2, 2, 2, 2, 2, 4, 2, 2, 2]),
-        my_adv_cards.get_card_by_name("英雄阿爾戈").set_predefined_steps([1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]),
-        my_adv_cards.get_card_by_name("聖誕千草").set_predefined_steps([1, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2]),
-        my_adv_cards.get_card_by_name("米卡莎").set_one_shot().set_predefined_steps([1]),
-        my_adv_cards.get_card_by_name("劇場莉莉").set_one_shot().set_predefined_steps([0, 1]),
-        my_adv_cards.get_card_by_name("春姬").set_predefined_steps([0, 0, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2]),
-        ]
-
-asses = [my_ass_cards.get_card_by_name("月神"),
-         my_ass_cards.get_card_by_name("劇場乳神"),
-         my_ass_cards.get_card_by_name("泳裝芙蕾雅"),
-         my_ass_cards.get_card_by_name("製作人荷米斯"),
-         my_ass_cards.get_card_by_name("聖爐乳神"),
-         my_ass_cards.get_card_by_name("泳裝埃伊娜")
-         ]
-
-my_team = Team(4, advs, asses)
-
-battle = BattleStage(12)
-battle.set_player_team(my_team).set_enemy_team(enemy_team)
-battle.run()
-
-ranker.add(battle)
 # ranker.report(limit=1, detail=False)
 ranker.report(limit=1, detail=True)
 # ranker.report()

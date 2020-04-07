@@ -1,5 +1,7 @@
 import copy
 
+x = 99
+
 
 class Character:
     def __init__(self, name, hp_val, mp_val, str_val, end_val, dex_val, agi_val, mag_val, **kwargs):
@@ -40,8 +42,14 @@ class Ability:
 
 
 class Recover:
-    hp = "Recover.hp`"
-    mp = "Recover.mp"
+    hp_imm = "Recover.hp_imm"
+    mp_imm = "Recover.mp_imm"
+    hp_turn = "Recover.hp_turn"
+    mp_turn = "Recover.mp_turn"
+
+    @classmethod
+    def get_enums(cls):
+        return [cls.hp_turn, cls.mp_turn]
 
 
 class Attack:
@@ -143,7 +151,7 @@ class EndEvent(Exception):
 
 
 all_effect_enum = []
-for multi_effect_enum in [Ability.get_enums(), Damage.get_enums(), Endurance.get_enums()]:
+for multi_effect_enum in [Ability.get_enums(), Damage.get_enums(), Endurance.get_enums(), Recover.get_enums()]:
     for one_effect_enum in multi_effect_enum:
         all_effect_enum.append(one_effect_enum)
 
@@ -262,7 +270,8 @@ class Adventurer(Character):
         if mag_val > str_val:
             simple_atk_enum = Attack.mag
         self.counter_attr = kwargs.get("counter_attr", Damage.none)
-        self.simple_hit_skill = Skill(Scope.foe, Power.simple, self.counter_attr, simple_atk_enum)
+        self.counter_skill = Skill(Scope.foe, Power.simple, self.counter_attr, simple_atk_enum)
+        self.simple_hit_skill = Skill(Scope.foe, Power.simple, Damage.none, simple_atk_enum)
         # self.skills = [s for s in self.skills if s is not None]
         self.killer = kwargs.get("killer", None)
         self.weak_killer = kwargs.get("weak_killer", None)
@@ -272,6 +281,7 @@ class Adventurer(Character):
         self.steps_record = {}
         self.hp_mp_record = {}
         self.turns_dmg_record = {}
+        self.turns_got_dmg_record = {}
         self.turns_counter_dmg_record = {}
         self.turns_effect_record = {}
         self.total_skill_dmg = 0
@@ -324,14 +334,18 @@ class Adventurer(Character):
     def select_skill(self):
         if self.predefined_steps is None:
             raise Exception(f"{self.name} 沒有設定預排技能")
+        cur_turn = self.get_cur_turn()
+        turn_idx = cur_turn - 1
         if self.is_one_shot is False:
-            if len(self.predefined_steps) < self.battle_stage.max_turns:
-                raise Exception("{self.name}  預排技能順序數量不足回合數")
-        turn_idx = self.get_cur_turn() - 1
+            if cur_turn > len(self.predefined_steps):
+                raise Exception(f"{self.name}  預排技能數量不足回合數 @Turn {cur_turn}")
         skill_idx = self.predefined_steps[turn_idx]
-        if skill_idx == 0:
+        if skill_idx == 99:
             raise Exception(f"{self.name} 必須發動技能 @Turn {turn_idx}")
-        self.selected_skill = self.skills[skill_idx - 1]
+        if skill_idx == 0:
+            self.selected_skill = self.simple_hit_skill
+        else:
+            self.selected_skill = self.skills[skill_idx - 1]
         mp_cost = self.selected_skill.mp_cost
         if mp_cost > self.cur_mp:
             raise Exception(f"{self.name}  MP不足 @Turn {turn_idx}")
@@ -432,7 +446,7 @@ class Adventurer(Character):
         return dmg
 
     def calc_counter_dmg(self, f):
-        dmg = self.calc_dmg(self.simple_hit_skill, f)
+        dmg = self.calc_dmg(self.counter_skill, f)
         # print(self.name, dmg)
         if dmg < 0:
             dmg = 0
@@ -442,12 +456,17 @@ class Adventurer(Character):
         return dmg
 
     def dmg_proces(self, f):
+        cur_turn = self.get_cur_turn()
         s = self.selected_skill
         dmg = self.calc_dmg(s, f)
         f.got_dmg(dmg)
+        if cur_turn in f.turns_got_dmg_record:
+            all_got_dmg = f.turns_got_dmg_record[cur_turn] + dmg
+        else:
+            all_got_dmg = dmg
+        f.turns_got_dmg_record[cur_turn] = all_got_dmg
         if not f.is_dead:
             counter_dmg = f.calc_counter_dmg(self)
-            cur_turn = self.get_cur_turn()
             if cur_turn in self.turns_counter_dmg_record:
                 all_counter_dmg = self.turns_counter_dmg_record[cur_turn] + counter_dmg
             else:
@@ -476,6 +495,10 @@ class Adventurer(Character):
         self.total_skill_dmg += dmg
         self.total_dmg += dmg
         self.my_team.team_total_dmg += dmg
+
+        # update after atk
+        foes_on_stage = self.my_team.opponent_team.members_on_stage
+        foe_on_stage = foes_on_stage[self.selected_enemy]
 
         for buff in s.buffs:
             if buff.scope == Scope.my_team:
@@ -509,7 +532,7 @@ class Adventurer(Character):
             else:
                 raise ValueError
 
-        energy_bar_boost = self.got_buff[Ability.energy_bar][0]
+        energy_bar_boost = self.calc_buff_value(Ability.energy_bar)
         if not s.is_special:
             self.my_team.inc_energy_bar(1 + energy_bar_boost)
 
@@ -609,13 +632,13 @@ class Adventurer(Character):
                     item[kind] = [value, turns]
 
     def set_buff(self, effect):
-        if effect.effect_enum == Recover.hp:
+        if effect.effect_enum == Recover.hp_imm:
             rate = effect.value
             self.cur_hp += self.max_hp * rate
             if self.cur_hp > self.max_hp:
                 self.cur_hp = self.max_hp
             return
-        elif effect.effect_enum == Recover.mp:
+        elif effect.effect_enum == Recover.mp_imm:
             rate = effect.value
             self.cur_mp += self.max_mp * rate
             if self.cur_mp > self.max_mp:
@@ -670,6 +693,8 @@ class Adventurer(Character):
             raise ValueError
 
         for effect_enum in all_effect_enum:
+            if 'Recover' in effect_enum:
+                continue
             if limit_enum:
                 if effect_enum != limit_enum:
                     continue
@@ -691,6 +716,12 @@ class Adventurer(Character):
             item[1] = item_turn - 1
             return True
 
+    def hp_mp_recover(self, eff, rate):
+        if 'hp' in eff:
+            self.cur_hp = clamp(self.cur_hp + self.max_hp * rate, 0, self.max_hp)
+        if 'mp' in eff:
+            self.cur_mp = clamp(self.cur_mp + self.max_mp * rate, 0, self.max_mp)
+
     def next_turn(self):
         all_buff = []
         all_debuff = []
@@ -703,11 +734,15 @@ class Adventurer(Character):
             passive_buff = self.passive_buff[eff]
             if passive_buff > 0:
                 all_p_buff.append([eff, passive_buff])
+                if 'Recover' in eff:
+                    self.hp_mp_recover(eff, passive_buff)
 
         for eff in list(self.ass_buff_need_check):
             ass_buff = self.assist_buff[eff]
             if ass_buff > 0:
                 all_ass_buff.append([eff, ass_buff])
+                if 'Recover' in eff:
+                    self.hp_mp_recover(eff, ass_buff)
 
         for eff in list(self.buff_need_check):
             buff = self.got_buff[eff]
@@ -716,6 +751,8 @@ class Adventurer(Character):
             need_check_next_turn = self.effect_next(buff)
             if not need_check_next_turn:
                 self.buff_need_check.remove(eff)
+                if 'Recover' in eff:
+                    self.hp_mp_recover(eff, buff[0])
 
         for eff in list(self.debuff_need_check):
             debuff = self.got_debuff[eff]
@@ -819,7 +856,7 @@ class Team:
             m.select_skill()
             if m.selected_skill.is_special:
                 if not self.dec_energy_bar():
-                    raise Exception(f"{m.name} 必殺技條未滿，無法施放必殺技 @Turn {self.get_cur_turn()}")
+                    raise Exception(f"{m.name} 必殺技條未滿({(self.energy_bar+14)/14})，無法施放必殺技 @Turn {self.get_cur_turn()}")
 
     def act(self):
         for m in self.members_on_stage:
@@ -843,7 +880,7 @@ class Team:
                       f"技能傷害 {int(m.total_skill_dmg)} ({m.total_skill_dmg / team_total_dmg * 100:.0f}%) + " + 
                       f"反擊傷害 {int(m.total_counter_dmg)} ({m.total_counter_dmg / team_total_dmg * 100:.0f}%)"
                       )
-        print(f"剩餘氣條: {self.energy_bar/15:.2f}")
+        print(f"剩餘氣條: {self.energy_bar/14:.2f}")
 
     def show_result(self):
         print("=" * 60)
@@ -866,6 +903,7 @@ class Team:
                     print(f"    HP:            {m.hp_mp_record[turn][0]}")
                     print(f"    MP:            {m.hp_mp_record[turn][1]}")
                     print(f"    Skill:         [{m.steps_record[turn]}] => Damage {int(m.turns_dmg_record[turn])}")
+                    print(f"    GotDmg:        {int(m.turns_got_dmg_record[turn])}")
                     print(f"    Buff:          {buffs}")
                     print(f"    DeBuff:        {debuffs}")
                     print(f"    AssistBuff:    {ass_buffs}")
@@ -904,10 +942,10 @@ class Team:
             self.energy_bar = 60
 
     def max_special_moves(self):
-        return int(self.energy_bar / 15)
+        return int(self.energy_bar / 14)
 
     def dec_energy_bar(self):
-        self.energy_bar -= 15
+        self.energy_bar -= 14
         if self.energy_bar < 0:
             return False
         self.combo_num += 1
