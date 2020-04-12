@@ -491,10 +491,11 @@ def parsing_chara(html_text):
             elif val == "アシスト":
                 chara.job = "Assist"
 
-    if chara.job == "Adventurer":
-        critic_table_no_used = parser.get_next_div()
-
     limit_break_status_table = parser.get_next_div()
+    while "最大値" not in limit_break_status_table.text:
+        limit_break_status_table = parser.get_next_div()
+
+    #limit_break_status_table = parser.get_next_div()
     for tr in limit_break_status_table.table.find_all('tr'):
         if tr.td is None:
             continue
@@ -516,11 +517,11 @@ def parsing_chara(html_text):
         if col.text == "敏捷":
             chara.agi = int(val.text.split("(")[0])
 
-    status_table_no_used = parser.get_next_div()
     all_skills = []
     all_passive_skills = []
 
     if chara.job == "Adventurer":
+        status_table_no_used = parser.get_next_div()
         special_skill = parser.get_next_div()
         special_skill_dec_str = gen_skill_str(special_skill.text, True)
 
