@@ -341,8 +341,9 @@ def parse_adj_buff(text):
         effs_str = m.group(2)
         effs = parse_effs(effs_str)
 
-        enum_str = gen_eff_str(effs, scope)
-        ret_effs.append(enum_str)
+        for e in effs:
+            enum_str = f"Effect({scope}, AdjBuff.clear_buff, 0, 0, {e})"
+            ret_effs.append(enum_str)
 
     m = re.match(r".*(自分|味方全体)のステイタス上昇効果.*(\d+)ターン延長", text, re.UNICODE)
     if m:
