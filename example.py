@@ -367,21 +367,21 @@ ranker = Ranker()
 
 boss1 = boss_cards.get("紅髮怪人")
 enemy_team = Team(1, [boss1.set_steps([
-        [1, 1],  # 1
-        [1, 1, 1],  # 2
-        [1, 1, 1, 5],  # 3
-        [1, 1, 2],  # 4
-        [1, 1, 4],  # 5
-        [1, 1, 1],  # 6
-        [1, 1, 1, 5],  # 7
-        [1, 1, 2],  # 8
-        [1, 1, 4],  # 9
-        [1, 1, 1],  # 10
-        [1, 1, 1, 5],  # 11
-        [1, 1, 4],  # 12
-        [1, 1, 1],  # 13
-        [1, 1, 1, 1],  # 14
-        1,  # 15
+        [1, 1],         # 1
+        [1, 1, 1],      # 2
+        [1, 1, 1, 5],   # 3
+        [1, 1, 2],      # 4
+        [1, 1, 4],      # 5
+        [1, 1, 1],      # 6
+        [1, 1, 1, 5],   # 7
+        [1, 1, 2],      # 8
+        [1, 1, 4],      # 9
+        [1, 1, 1],      # 10
+        [1, 1, 1, 5],   # 11
+        [1, 1, 4],      # 12
+        [1, 1, 1],      # 13
+        [1, 1, 1, 1],   # 14
+        1,              # 15
     ])
 ])
 
@@ -406,8 +406,8 @@ battle = BattleStage(15)
 battle.set_player_team(my_team).set_enemy_team(enemy_team)
 battle.run()
 
-ranker.add(battle)
+rank = ranker.add(battle)
 
 #ranker.report(limit=1, detail=False)
-ranker.report(limit=1, detail=True)
+ranker.report(rank=rank, detail=True)
 # ranker.report()

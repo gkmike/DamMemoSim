@@ -956,7 +956,7 @@ class Team:
                 dead_text = ""
                 if m.is_dead:
                     dead_text = " (死亡) "
-                print(f"  {m.name} + {m.assist.name}{dead_text}=> "
+                print(f"  {m.name} + {m.assist.name}{dead_text} => "
                       f"{int(m.total_dmg):,} ({m.total_dmg / team_total_dmg * 100:.0f}%) = " +
                       f"技能傷害 {int(m.total_skill_dmg)} ({m.total_skill_dmg / team_total_dmg * 100:.0f}%) + " + 
                       f"反擊傷害 {int(m.total_counter_dmg)} ({m.total_counter_dmg / team_total_dmg * 100:.0f}%)"
@@ -1145,6 +1145,9 @@ class Ranker:
                 return 
         self.all_battles.append(copy.deepcopy(battle_to_add))
         self.all_battles = sorted(self.all_battles, key=lambda team: team.player_team.team_total_dmg, reverse=True)
+        for i, bt in enumerate(self.all_battles):
+            if bt.player_team.team_total_dmg == battle_to_add.player_team.team_total_dmg:
+                return i
 
     def report(self, **kwargs):
         limit = kwargs.get("limit", 1)
