@@ -611,7 +611,7 @@ class Adventurer(Character):
         v1 *= (1 + self.sum_eff_value(abi_eff1))
         v2 *= (1 + self.sum_eff_value(abi_eff2))
 
-        rate = (v1 + v2) / 5000
+        rate = (v1 + v2) / 8000
         rate += self.sum_eff_value(rate_eff)
         rate = clamp(rate, 0, 100)
         return rate 
