@@ -95,7 +95,7 @@ def parse_effs(effs_str):
     if "物理耐性" in effs_str:
         effs.append("Endurance.phy")
     if "魔法耐性" in effs_str:
-        effs.append("Endurance.str")
+        effs.append("Endurance.mag")
 
     if "全体攻撃ダメージ" in effs_str:
         effs.append("Endurance.foes")
