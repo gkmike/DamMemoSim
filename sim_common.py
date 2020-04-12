@@ -1139,10 +1139,10 @@ class Ranker:
         self.all_battles = []
 
     def add(self, battle_to_add):
-        for bt in self.all_battles:
+        for i, bt in enumerate(self.all_battles):
             if bt.player_team.team_total_dmg == battle_to_add.player_team.team_total_dmg:
                 print("分數相同 不列入紀錄")
-                raise ValueError
+                return i+1
         self.all_battles.append(copy.deepcopy(battle_to_add))
         self.all_battles = sorted(self.all_battles, key=lambda team: team.player_team.team_total_dmg, reverse=True)
         for i, bt in enumerate(self.all_battles):

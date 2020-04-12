@@ -407,7 +407,9 @@ battle.set_player_team(my_team).set_enemy_team(enemy_team)
 battle.run()
 
 rank = ranker.add(battle)
+print(rank)
 
 #ranker.report(limit=1, detail=False)
-ranker.report(rank=rank, detail=True)
+ranker.report(rank=rank, detail=False)
+#ranker.report(rank=rank, detail=True)
 # ranker.report()
