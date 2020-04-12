@@ -1147,7 +1147,8 @@ class Ranker:
         self.all_battles = sorted(self.all_battles, key=lambda team: team.player_team.team_total_dmg, reverse=True)
         for i, bt in enumerate(self.all_battles):
             if bt.player_team.team_total_dmg == battle_to_add.player_team.team_total_dmg:
-                return i
+                return i+1
+        raise
 
     def report(self, **kwargs):
         limit = kwargs.get("limit", 1)
