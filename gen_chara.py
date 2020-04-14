@@ -118,9 +118,9 @@ def parse_effs(effs_str):
         effs.append("Damage.dark")
 
     if "全体攻撃被ダメージ" in effs_str:
-        effs.append("Damage.foes")
+        effs.append("Endurance.foes")
     if "単体攻撃被ダメージ" in effs_str:
-        effs.append("Damage.foe")
+        effs.append("Endurance.foe")
 
     if "HP" in effs_str or "ＨＰ" in effs_str:
         effs.append("Recover.hp_turn")
