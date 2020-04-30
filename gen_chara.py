@@ -15,6 +15,7 @@ class Chara:
     agi = 0
     mag = 0
     killer = ""
+    counter_hp = ""
     skills = ""
     passive_skills = ""
 
@@ -442,6 +443,13 @@ def gen_passive_skill_str(text):
     return b
 
 
+def gen_counter_hp_str(text):
+    m = re.match(r".*】.*カウンター発生時.*通常攻撃.*(HP|ＨＰ)回復", text, re.UNICODE)
+    if m:
+        return "counter_hp=True,"
+    return ""
+
+
 def gen_killer_str(text):
     m = re.match(r".*】(\w+)の敵を攻撃.*(\d+)[％%]上昇.*", text, re.UNICODE)
     if m:
@@ -473,7 +481,7 @@ def gen_killer_str(text):
         else:
             raise ValueError
 
-    return None
+    return ""
 
 def parsing_chara(html_text):
     parser = HtmlParser(html_text)
@@ -543,9 +551,10 @@ def parsing_chara(html_text):
             passive_skill_str = gen_passive_skill_str(s.text)
             if passive_skill_str:
                 all_passive_skills.append(passive_skill_str)
-            killer = gen_killer_str(s.text)
-            if killer:
-                chara.killer = killer
+            if chara.killer == "":
+                chara.killer = gen_killer_str(s.text)
+            if chara.counter_hp == "":
+                chara.counter_hp = gen_counter_hp_str(s.text)
 
         concated_passive_skills = ',\n        '.join(all_passive_skills)
         chara.passive_skills = f"passive_skills=[Skill(buffs=[{concated_passive_skills}])],"
@@ -556,6 +565,7 @@ def parsing_chara(html_text):
     {{chara.skills}}
     {{chara.passive_skills}}
     {{chara.killer}}
+    {{chara.counter_hp}}
 ),
     """)
 

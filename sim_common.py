@@ -289,6 +289,7 @@ class Adventurer(Character):
         self.counter_skill = Skill(Scope.foe, Power.simple, self.counter_attr, simple_atk_enum)
         self.simple_hit_skill = Skill(Scope.foe, Power.simple, Damage.none, simple_atk_enum)
         # self.skills = [s for s in self.skills if s is not None]
+        self.counter_hp = kwargs.get("counter_hp", None)
         self.killer = kwargs.get("killer", None)
         self.weak_killer = kwargs.get("weak_killer", None)
         self.passive_skills = kwargs.get("passive_skills", None)
@@ -491,15 +492,22 @@ class Adventurer(Character):
         return dmg
 
     def calc_counter_dmg(self, f):
-        counter_dmg_success_up = 1 + self.calc_total_buff(SuccessUp.counter) * self.count_counter_rate()
-        dmg = self.calc_dmg(self.counter_skill, f) * self.count_counter_rate() * counter_dmg_success_up
-        # print(self.name, dmg)
-        if dmg < 0:
-            dmg = 0
-        self.total_counter_dmg += dmg
-        self.total_dmg += dmg
-        self.my_team.team_total_dmg += dmg
-        return dmg
+        if self.counter_hp:
+            recover_hp = self.calc_total_abi(Ability.mag) * self.count_counter_rate() * 2
+            members = sorted(self.my_team.members_on_stage, key=lambda m: m.cur_hp)
+            member = members[0]
+            member.cur_hp = clamp(member.cur_hp + recover_hp, 0, member.max_hp)
+            return 0
+        else:
+            counter_dmg_success_up = 1 + self.calc_total_buff(SuccessUp.counter) * self.count_counter_rate()
+            dmg = self.calc_dmg(self.counter_skill, f) * self.count_counter_rate() * counter_dmg_success_up
+            # print(self.name, dmg)
+            if dmg < 0:
+                dmg = 0
+            self.total_counter_dmg += dmg
+            self.total_dmg += dmg
+            self.my_team.team_total_dmg += dmg
+            return dmg
 
     def dmg_proces(self, f):
         cur_turn = self.get_cur_turn()

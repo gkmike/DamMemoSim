@@ -94,6 +94,7 @@ adv_cards = MyCards([
                                             Effect(Scope.my_self, Ability.dex, 0.25),
                                             Effect(Scope.my_self, Recover.hp_turn, 0.04),
                                             Effect(Scope.my_self, Recover.mp_turn, 0.04)])],
+               counter_hp=True,
 
                ),
 
