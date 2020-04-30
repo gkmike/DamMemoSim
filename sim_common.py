@@ -1169,7 +1169,7 @@ class Ranker:
             print("--")
             print(f"結束回合: {int(b.end_turn)}, 結束事由: {b.ending}")
             print(f"總傷害: {int(b.player_team.team_total_dmg):,} "
-                  f"(榮光積分:{int(b.player_team.team_total_dmg)*17:,}) [rank {idx+1}] "
+                  f"(榮光積分(lv6):{int(b.player_team.team_total_dmg)*17:,}) [rank {idx+1}] "
                   f"({b.player_team.team_total_dmg / top_dmg * 100:,.0f}% of rank1)")
             b.player_team.show_brief()
             if show_detail:
