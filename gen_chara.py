@@ -70,6 +70,8 @@ def parse_effs(effs_str):
         effs.append("Ability.str")
     elif "、力" in effs_str:
         effs.append("Ability.str")
+    elif effs_str.startswith("力"):
+        effs.append("Ability.str")
 
     if "敏捷" in effs_str:
         effs.append("Ability.agi")
