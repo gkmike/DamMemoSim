@@ -232,7 +232,7 @@ def parse_atk(text):
 
 
 def parse_debuff(text, turn):
-    m = re.match(r".*(敵単体|敵全体)(.+)を(\d+)[％%]減少.*", text, re.UNICODE)
+    m = re.match(r".*(敵単体|敵全体)(.+?)を?(\d+)[％%]減少.*", text, re.UNICODE)
     if m is None:
         m = re.match(r".+(敵単体|敵全体)(.+被ダメージ).*を(\d+)[％%]増加.*", text, re.UNICODE)
         if m is None:
