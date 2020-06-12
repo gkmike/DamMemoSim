@@ -979,7 +979,7 @@ class Team:
         print("=" * 60)
         for m in self.members:
             print(f"{m.name} 回合詳細")
-            for turn in range(1, self.battle_stage.end_turn):
+            for turn in range(1, self.battle_stage.end_turn+1):
                 if turn in m.steps_record:
                     print(f"  Turn {turn}:")
                     if turn not in m.turns_effect_record:
